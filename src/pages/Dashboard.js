@@ -10,9 +10,13 @@ import {
   faCode,
   faTerminal,
   faLock,
-  faEllipsisH
+  faEllipsisH,
+  faUpload,
+  faExchangeAlt,
+  faFileCode
 } from '@fortawesome/free-solid-svg-icons';
 import TerminalFeature from '../components/TerminalPanel';
+import { Link } from 'react-router-dom';
 
 function Dashboard() {
   return (
@@ -46,36 +50,45 @@ function Dashboard() {
           <div className="bg-[#222222] rounded-lg p-6">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">最新实验</h2>
-              <a href="#" className="text-primary hover:text-primary/90">查看全部</a>
+              <Link to="/knowledge" className="text-primary hover:text-primary/90">查看全部</Link>
             </div>
             <div className="space-y-4">
-              <div className="bg-[#2A2A2A] rounded-lg p-4">
+              <Link to="/knowledge/file-upload" className="bg-[#2A2A2A] rounded-lg p-4 block hover:bg-[#333333] transition-colors">
                 <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-medium mb-2">SQL 注入攻击实验</h3>
-                    <p className="text-sm text-gray-400">难度：中级 | 时长：2小时</p>
+                  <div className="flex items-start">
+                    <FontAwesomeIcon icon={faUpload} className="text-primary mt-1 mr-3" />
+                    <div>
+                      <h3 className="font-medium mb-2">任意文件上传漏洞</h3>
+                      <p className="text-sm text-gray-400">难度：高级 | 时长：3小时</p>
+                    </div>
                   </div>
-                  <span className="bg-primary/20 text-primary px-2 py-1 rounded-full text-sm">热门</span>
+                  <span className="bg-red-500/20 text-red-400 px-2 py-1 rounded-full text-sm">热门</span>
                 </div>
-              </div>
-              <div className="bg-[#2A2A2A] rounded-lg p-4">
+              </Link>
+              <Link to="/knowledge/logic-vulnerabilities" className="bg-[#2A2A2A] rounded-lg p-4 block hover:bg-[#333333] transition-colors">
                 <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-medium mb-2">XSS 跨站脚本攻击</h3>
-                    <p className="text-sm text-gray-400">难度：入门 | 时长：1.5小时</p>
+                  <div className="flex items-start">
+                    <FontAwesomeIcon icon={faExchangeAlt} className="text-primary mt-1 mr-3" />
+                    <div>
+                      <h3 className="font-medium mb-2">业务逻辑漏洞利用</h3>
+                      <p className="text-sm text-gray-400">难度：中级 | 时长：2.5小时</p>
+                    </div>
                   </div>
-                  <span className="bg-secondary/20 text-gray-300 px-2 py-1 rounded-full text-sm">新手友好</span>
+                  <span className="bg-primary/20 text-primary px-2 py-1 rounded-full text-sm">新课</span>
                 </div>
-              </div>
-              <div className="bg-[#2A2A2A] rounded-lg p-4">
+              </Link>
+              <Link to="/knowledge/xxe" className="bg-[#2A2A2A] rounded-lg p-4 block hover:bg-[#333333] transition-colors">
                 <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-medium mb-2">文件上传漏洞利用</h3>
-                    <p className="text-sm text-gray-400">难度：高级 | 时长：3小时</p>
+                  <div className="flex items-start">
+                    <FontAwesomeIcon icon={faFileCode} className="text-primary mt-1 mr-3" />
+                    <div>
+                      <h3 className="font-medium mb-2">XML外部实体注入漏洞</h3>
+                      <p className="text-sm text-gray-400">难度：专家 | 时长：4小时</p>
+                    </div>
                   </div>
-                  <span className="bg-red-500/20 text-red-400 px-2 py-1 rounded-full text-sm">挑战</span>
+                  <span className="bg-yellow-500/20 text-yellow-400 px-2 py-1 rounded-full text-sm">挑战</span>
                 </div>
-              </div>
+              </Link>
             </div>
           </div>
 
@@ -89,29 +102,38 @@ function Dashboard() {
             <div className="space-y-6">
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-400">Web 安全基础</span>
-                  <span className="text-sm text-primary">85%</span>
+                  <span className="text-sm text-gray-400">网络攻击基础</span>
+                  <span className="text-sm text-primary">70%</span>
                 </div>
                 <div className="h-2 bg-[#2A2A2A] rounded-full">
-                  <div className="h-2 bg-primary rounded-full" style={{ width: '85%' }}></div>
+                  <div className="h-2 bg-primary rounded-full" style={{ width: '70%' }}></div>
                 </div>
               </div>
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-400">渗透测试技术</span>
-                  <span className="text-sm text-primary">60%</span>
+                  <span className="text-sm text-gray-400">漏洞利用技术</span>
+                  <span className="text-sm text-primary">45%</span>
                 </div>
                 <div className="h-2 bg-[#2A2A2A] rounded-full">
-                  <div className="h-2 bg-primary rounded-full" style={{ width: '60%' }}></div>
+                  <div className="h-2 bg-primary rounded-full" style={{ width: '45%' }}></div>
                 </div>
               </div>
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-sm text-gray-400">安全开发实践</span>
-                  <span className="text-sm text-primary">40%</span>
+                  <span className="text-sm text-gray-400">中间件安全</span>
+                  <span className="text-sm text-primary">30%</span>
                 </div>
                 <div className="h-2 bg-[#2A2A2A] rounded-full">
-                  <div className="h-2 bg-primary rounded-full" style={{ width: '40%' }}></div>
+                  <div className="h-2 bg-primary rounded-full" style={{ width: '30%' }}></div>
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-gray-400">组件与框架安全</span>
+                  <span className="text-sm text-primary">25%</span>
+                </div>
+                <div className="h-2 bg-[#2A2A2A] rounded-full">
+                  <div className="h-2 bg-primary rounded-full" style={{ width: '25%' }}></div>
                 </div>
               </div>
             </div>
