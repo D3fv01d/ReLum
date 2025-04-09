@@ -9,7 +9,10 @@ import {
   faGripLines,
   faPlayCircle,
   faStop,
-  faSpinner
+  faSpinner,
+  faExpand,
+  faCompress,
+  faWindowRestore
 } from '@fortawesome/free-solid-svg-icons';
 
 // 实际WebSocket连接类（用于连接到后端Shell服务）
@@ -177,13 +180,20 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
   const [terminalInput, setTerminalInput] = useState('');
   const [terminalHeight, setTerminalHeight] = useState(288); // 72 * 4 = 288px (h-72)
   const [isDragging, setIsDragging] = useState(false);
+  const [isFloating, setIsFloating] = useState(false); // 新增：是否悬浮模式
+  const [floatingPosition, setFloatingPosition] = useState({ x: 100, y: 100 }); // 新增：悬浮窗位置
+  const [draggingWindow, setDraggingWindow] = useState(false); // 新增：是否正在拖拽悬浮窗
   const dragStartY = useRef(0);
+  const dragStartX = useRef(0); // 新增：拖拽悬浮窗的起始X坐标
   const startHeight = useRef(0);
+  const startPosition = useRef({ x: 0, y: 0 }); // 新增：悬浮窗拖拽起始位置
   const terminalEndRef = useRef(null);
   const inputRef = useRef(null);
   const shellConnectionRef = useRef(null);
   const [shellActive, setShellActive] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const floatingWidth = 600; // 悬浮窗宽度
+  const floatingHeight = 400; // 悬浮窗高度
   
   const [terminalHistory, setTerminalHistory] = useState([
     { type: 'output', content: '欢迎使用 ReLum 安全实验终端!' },
@@ -213,7 +223,7 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
     };
   }, []);
 
-  // 处理拖拽开始
+  // 处理拖拽开始（底部终端调整高度）
   const handleDragStart = (e) => {
     e.preventDefault();
     dragStartY.current = e.clientY;
@@ -221,22 +231,44 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
     setIsDragging(true);
   };
 
+  // 处理悬浮窗拖拽开始
+  const handleFloatingDragStart = (e) => {
+    if (isFloating) {
+      e.preventDefault();
+      dragStartX.current = e.clientX;
+      dragStartY.current = e.clientY;
+      startPosition.current = { ...floatingPosition };
+      setDraggingWindow(true);
+    }
+  };
+
   // 处理拖拽移动
   useEffect(() => {
     const handleMouseMove = (e) => {
-      if (!isDragging) return;
-      
-      // 计算新高度 (向上拖动增加高度)
-      const delta = dragStartY.current - e.clientY;
-      const newHeight = Math.max(100, Math.min(window.innerHeight * 0.8, startHeight.current + delta));
-      setTerminalHeight(newHeight);
+      if (isDragging) {
+        // 调整底部终端高度
+        const delta = dragStartY.current - e.clientY;
+        const newHeight = Math.max(100, Math.min(window.innerHeight * 0.8, startHeight.current + delta));
+        setTerminalHeight(newHeight);
+      } else if (draggingWindow) {
+        // 移动悬浮窗
+        const deltaX = e.clientX - dragStartX.current;
+        const deltaY = e.clientY - dragStartY.current;
+        
+        // 确保悬浮窗不会被拖出屏幕
+        const newX = Math.max(0, Math.min(window.innerWidth - floatingWidth, startPosition.current.x + deltaX));
+        const newY = Math.max(0, Math.min(window.innerHeight - floatingHeight, startPosition.current.y + deltaY));
+        
+        setFloatingPosition({ x: newX, y: newY });
+      }
     };
 
     const handleMouseUp = () => {
       setIsDragging(false);
+      setDraggingWindow(false);
     };
 
-    if (isDragging) {
+    if (isDragging || draggingWindow) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
     }
@@ -245,7 +277,19 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging]);
+  }, [isDragging, draggingWindow, floatingWidth]);
+
+  // 切换悬浮模式
+  const toggleFloatingMode = () => {
+    setIsFloating(!isFloating);
+    
+    // 如果切换到悬浮模式，设置初始位置在屏幕中央
+    if (!isFloating) {
+      const x = Math.max(0, (window.innerWidth - floatingWidth) / 2);
+      const y = Math.max(0, (window.innerHeight - floatingHeight) / 2);
+      setFloatingPosition({ x, y });
+    }
+  };
 
   // 连接本地Shell
   const connectShell = () => {
@@ -347,6 +391,112 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
     }
   };
 
+  // 渲染悬浮模式的终端
+  if (isFloating && showTerminal) {
+    return (
+      <div 
+        className="fixed bg-[#1E1E1E] shadow-2xl rounded-lg overflow-hidden flex flex-col z-40 border border-[#444]"
+        style={{ 
+          width: `${floatingWidth}px`, 
+          height: `${floatingHeight}px`,
+          left: `${floatingPosition.x}px`,
+          top: `${floatingPosition.y}px`,
+        }}
+      >
+        {/* 悬浮窗标题栏 */}
+        <div 
+          className="flex items-center justify-between bg-[#2D2D2D] p-2 border-b border-[#444] cursor-move"
+          onMouseDown={handleFloatingDragStart}
+        >
+          <div className="flex items-center space-x-2">
+            <FontAwesomeIcon icon={faTerminal} className="text-primary mr-2" />
+            <div className="text-sm font-medium text-white">ReLum 安全实验终端</div>
+            
+            {/* Shell控制按钮 */}
+            {isConnecting ? (
+              <div className="ml-4 bg-yellow-600 text-white text-xs px-2 py-1 rounded flex items-center">
+                <FontAwesomeIcon icon={faSpinner} className="mr-1 animate-spin" />
+                正在连接...
+              </div>
+            ) : shellActive ? (
+              <button 
+                className="ml-4 bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded flex items-center"
+                onClick={disconnectShell}
+              >
+                <FontAwesomeIcon icon={faStop} className="mr-1" />
+                断开Shell
+              </button>
+            ) : (
+              <button 
+                className="ml-4 bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded flex items-center"
+                onClick={connectShell}
+              >
+                <FontAwesomeIcon icon={faPlayCircle} className="mr-1" />
+                连接Shell
+              </button>
+            )}
+            
+            {shellActive && (
+              <div className="ml-2 flex items-center">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse mr-1"></div>
+                <span className="text-green-400 text-xs">已连接</span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center space-x-2">
+            <button 
+              className="text-gray-400 hover:text-white"
+              onClick={toggleFloatingMode}
+              title="固定到底部"
+            >
+              <FontAwesomeIcon icon={faWindowRestore} />
+            </button>
+            <button 
+              className="text-gray-400 hover:text-white"
+              onClick={() => setShowTerminal(false)}
+              title="关闭终端"
+            >
+              <FontAwesomeIcon icon={faTimes} />
+            </button>
+          </div>
+        </div>
+        
+        {/* 终端内容区域 */}
+        <div 
+          className="flex-1 p-3 overflow-y-auto font-mono text-sm text-gray-300 bg-[#1E1E1E]"
+          onClick={handleTerminalClick}
+        >
+          {terminalHistory.map((entry, index) => (
+            <div key={index} className={`mb-1 ${entry.type === 'input' ? 'text-gray-300' : entry.error ? 'text-red-400' : 'text-green-400'}`}>
+              {entry.type === 'input' ? (
+                <div className="font-mono text-sm tracking-wide">
+                  <span className="text-primary mr-1">$</span> {entry.content}
+                </div>
+              ) : (
+                <div className="font-mono text-sm tracking-wide" style={{ whiteSpace: 'pre-line' }}>{entry.content}</div>
+              )}
+            </div>
+          ))}
+
+          {/* 当前输入行 */}
+          <form onSubmit={handleTerminalSubmit} className="flex items-start mb-1">
+            <span className="text-primary mr-2 font-mono">$</span>
+            <input
+              ref={inputRef}
+              type="text"
+              value={terminalInput}
+              onChange={(e) => setTerminalInput(e.target.value)}
+              className="flex-1 bg-transparent outline-none text-white font-mono text-sm tracking-wide border-none p-0 m-0"
+              autoFocus
+            />
+          </form>
+          <div ref={terminalEndRef} />
+        </div>
+      </div>
+    );
+  }
+
+  // 正常底部终端
   return (
     <div 
       className={`fixed bottom-0 left-0 right-0 bg-[#1E1E1E] shadow-lg transition-all duration-300 z-30 ${showTerminal ? '' : 'h-0'} overflow-hidden flex flex-col`} 
@@ -397,7 +547,18 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
           )}
         </div>
         <div className="flex items-center space-x-2">
-          <button className="text-gray-400 hover:text-white">
+          {/* 新增悬浮模式按钮 */}
+          <button 
+            className="text-gray-400 hover:text-white"
+            onClick={toggleFloatingMode}
+            title="弹出终端"
+          >
+            <FontAwesomeIcon icon={faExpand} />
+          </button>
+          <button 
+            className="text-gray-400 hover:text-white"
+            onClick={() => setShowTerminal(prev => !prev)}
+          >
             <FontAwesomeIcon icon={showTerminal ? faChevronDown : faChevronUp} />
           </button>
           <button 
