@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import Knowledge from './pages/Knowledge';
 import KnowledgeDetail from './pages/KnowledgeDetail';
 import Practice from './pages/Practice';
+import Settings from './pages/Settings';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/knowledge" element={<Knowledge />} />
         <Route path="/knowledge/:categoryId" element={<KnowledgeDetail />} />
         <Route path="/practice" element={<Practice />} />
+        <Route path="/settings" element={<Settings />} />
       </Routes>
     </div>
   );

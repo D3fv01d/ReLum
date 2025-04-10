@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faChartLine, 
@@ -7,7 +7,8 @@ import {
   faLaptopCode, 
   faShieldAlt, 
   faBell, 
-  faUser 
+  faUser,
+  faCog
 } from '@fortawesome/free-solid-svg-icons';
 
 function Navbar() {
@@ -52,6 +53,12 @@ function Navbar() {
               <button className="!rounded-button bg-secondary hover:bg-secondary/90 text-white p-2 whitespace-nowrap transition-colors duration-200">
                 <FontAwesomeIcon icon={faBell} />
               </button>
+              <Link 
+                to="/settings"
+                className="!rounded-button bg-secondary hover:bg-secondary/90 text-white p-2 whitespace-nowrap transition-colors duration-200"
+              >
+                <FontAwesomeIcon icon={faCog} />
+              </Link>
               <button className="!rounded-button bg-secondary hover:bg-secondary/90 text-white p-2 whitespace-nowrap transition-colors duration-200">
                 <FontAwesomeIcon icon={faUser} />
               </button>
