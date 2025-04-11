@@ -5,7 +5,6 @@ import {
   faChartLine, 
   faBook, 
   faLaptopCode, 
-  faShieldAlt, 
   faBell, 
   faUser,
   faCog
@@ -45,10 +44,7 @@ function Navbar() {
               </NavLink>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <button className="!rounded-button bg-primary hover:bg-primary/90 text-white px-4 py-2 whitespace-nowrap transition-colors duration-200">
-              <FontAwesomeIcon icon={faShieldAlt} className="mr-2" />开始实验
-            </button>
+          <div className="flex items-center">
             <div className="flex items-center space-x-3">
               <button className="!rounded-button bg-secondary hover:bg-secondary/90 text-white p-2 whitespace-nowrap transition-colors duration-200">
                 <FontAwesomeIcon icon={faBell} />

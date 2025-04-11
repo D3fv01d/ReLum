@@ -1,28 +1,15 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faFlask, 
-  faGraduationCap, 
-  faChessBoard, 
-  faDatabase, 
+  faGraduationCap,
   faCode, 
-  faPaperPlane, 
-  faUpload,
-  faDownload,
-  faTerminal,
-  faFile,
-  faFileCode,
   faExchangeAlt,
-  faServer,
-  faPuzzlePiece,
-  faLayerGroup,
-  faGlobe,
-  faHdd,
+  faTerminal,
   faLock,
   faUnlock,
   faCrosshairs,
-  faTrophy,
   faFlagCheckered,
   faUserSecret,
   faShieldAlt
@@ -81,7 +68,7 @@ function PracticeCard({ title, description, difficulty, time, category, icon, ta
           <span className="text-xs text-gray-400">{time}</span>
         </div>
         <button className="bg-primary hover:bg-primary/90 text-white px-3 py-1 rounded text-sm transition-colors duration-200">
-          开始练习
+          开始训练
         </button>
       </div>
     </div>
@@ -89,91 +76,6 @@ function PracticeCard({ title, description, difficulty, time, category, icon, ta
 }
 
 function Practice() {
-  const [activeTab, setActiveTab] = useState('knowledge');
-  
-  const knowledgePractices = [
-    {
-      title: "SQL注入漏洞利用与防护",
-      description: "学习和练习不同类型的SQL注入攻击技术和防御方法",
-      difficulty: "基础",
-      time: "2小时",
-      category: "web",
-      icon: faDatabase,
-      tags: ["SQL注入", "数据库安全", "参数化查询"],
-      status: "推荐"
-    },
-    {
-      title: "XSS跨站脚本攻击实战",
-      description: "动手实践反射型、存储型和DOM型XSS攻击",
-      difficulty: "基础",
-      time: "1.5小时",
-      category: "web",
-      icon: faCode,
-      tags: ["XSS", "输入验证", "CSP策略"],
-      status: "热门"
-    },
-    {
-      title: "CSRF跨站请求伪造实验",
-      description: "了解CSRF攻击原理并实践攻防技术",
-      difficulty: "中级",
-      time: "1.5小时",
-      category: "web",
-      icon: faPaperPlane,
-      tags: ["CSRF", "Referer检测", "Token验证"],
-      status: ""
-    },
-    {
-      title: "文件上传漏洞利用",
-      description: "学习绕过各种文件上传限制的技术",
-      difficulty: "中级",
-      time: "2小时",
-      category: "web",
-      icon: faUpload,
-      tags: ["文件上传", "类型验证", "文件内容检测"],
-      status: "进行中"
-    },
-    {
-      title: "任意文件下载漏洞实验",
-      description: "探索路径遍历和任意文件下载漏洞",
-      difficulty: "中级",
-      time: "1.5小时",
-      category: "web",
-      icon: faDownload,
-      tags: ["路径遍历", "目录穿越", "权限控制"],
-      status: ""
-    },
-    {
-      title: "命令注入与执行实战",
-      description: "练习命令注入攻击和防御技术",
-      difficulty: "高级",
-      time: "2.5小时",
-      category: "web",
-      icon: faTerminal,
-      tags: ["命令注入", "参数过滤", "反弹Shell"],
-      status: ""
-    },
-    {
-      title: "文件包含漏洞利用",
-      description: "学习本地和远程文件包含漏洞的利用",
-      difficulty: "高级",
-      time: "2小时",
-      category: "web",
-      icon: faFile,
-      tags: ["LFI", "RFI", "伪协议"],
-      status: ""
-    },
-    {
-      title: "XML外部实体注入(XXE)实战",
-      description: "掌握XXE漏洞的利用和防护技术",
-      difficulty: "专家",
-      time: "3小时",
-      category: "web",
-      icon: faFileCode,
-      tags: ["XXE", "XML解析", "带外通道"],
-      status: "新课"
-    }
-  ];
-  
   const comprehensivePractices = [
     {
       title: "Web安全综合渗透测试",
@@ -254,6 +156,16 @@ function Practice() {
       icon: faCode,
       tags: ["代码审计", "安全开发", "漏洞修复"],
       status: ""
+    },
+    {
+      title: "靶场环境综合挑战",
+      description: "通过综合靶场环境锻炼真实渗透测试技能",
+      difficulty: "专家",
+      time: "12小时",
+      category: "comprehensive",
+      icon: faTerminal,
+      tags: ["靶场实战", "CTF挑战", "渗透测试"],
+      status: "热门"
     }
   ];
   
@@ -262,65 +174,23 @@ function Practice() {
       <TerminalFeature />
       
       <div className="bg-[#222222] rounded-lg p-6">
-        <h1 className="text-3xl font-bold mb-4">网络安全实践平台</h1>
-        <p className="text-gray-400 mb-6">在这里，您可以通过动手实践来提升网络安全技能。从基础的知识库配套练习到高级的综合训练，全方位提升您的安全技能。</p>
+        <h1 className="text-3xl font-bold mb-4">安全综合训练</h1>
+        <p className="text-gray-400 mb-6">这些综合训练模拟企业真实安全场景，整合多种漏洞利用技术，帮助您提升实际渗透测试和安全评估能力。</p>
         
-        {/* 选项卡导航 */}
-        <div className="flex border-b border-gray-700 mb-6">
-          <button 
-            className={`pb-2 px-4 text-sm font-medium ${activeTab === 'knowledge' ? 'text-primary border-b-2 border-primary' : 'text-gray-400 hover:text-white'}`}
-            onClick={() => setActiveTab('knowledge')}
-          >
-            <FontAwesomeIcon icon={faGraduationCap} className="mr-2" />
-            知识库配套练习
-          </button>
-          <button 
-            className={`pb-2 px-4 text-sm font-medium ${activeTab === 'comprehensive' ? 'text-primary border-b-2 border-primary' : 'text-gray-400 hover:text-white'}`}
-            onClick={() => setActiveTab('comprehensive')}
-          >
-            <FontAwesomeIcon icon={faChessBoard} className="mr-2" />
-            安全综合训练
-          </button>
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <Link to="/knowledge" className="text-primary text-sm hover:text-primary/90">
+              <FontAwesomeIcon icon={faGraduationCap} className="mr-1" />
+              查看学习资料
+            </Link>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {comprehensivePractices.map((practice, index) => (
+              <PracticeCard key={index} {...practice} />
+            ))}
+          </div>
         </div>
-        
-        {/* 知识库配套练习 */}
-        {activeTab === 'knowledge' && (
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">知识库配套练习</h2>
-              <Link to="/knowledge" className="text-primary text-sm hover:text-primary/90">
-                访问知识库
-              </Link>
-            </div>
-            <p className="text-gray-400 mb-6">这些练习与知识库内容相匹配，帮助您巩固所学知识。从基础的SQL注入到高级的XXE漏洞，逐步提升您的安全实战能力。</p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {knowledgePractices.map((practice, index) => (
-                <PracticeCard key={index} {...practice} />
-              ))}
-            </div>
-          </div>
-        )}
-        
-        {/* 综合训练挑战 */}
-        {activeTab === 'comprehensive' && (
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">安全综合训练</h2>
-              <Link to="/knowledge" className="text-primary text-sm hover:text-primary/90">
-                <FontAwesomeIcon icon={faGraduationCap} className="mr-1" />
-                查看学习资料
-              </Link>
-            </div>
-            <p className="text-gray-400 mb-6">这些综合训练模拟企业真实安全场景，整合多种漏洞利用技术，帮助您构建完整的安全技能体系，提升实际应用能力。</p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {comprehensivePractices.map((practice, index) => (
-                <PracticeCard key={index} {...practice} />
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </main>
   );
