@@ -37,10 +37,23 @@ class RealShellConnection {
       // 注意：需要在后端设置对应的WebSocket服务器
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = window.location.hostname;
-      const port = process.env.NODE_ENV === 'development' ? '8080' : window.location.port;
+      // 修复Docker环境中的端口问题
+      let port = window.location.port;
+      
+      // 如果在Docker容器中，前端和后端在同一端口上提供服务
+      // 但在开发环境中，它们是在不同端口上
+      if (port === '') {
+        // 默认HTTP/HTTPS端口（空字符串）
+        port = '8080'; // 后端总是在8080
+      } else if (port === '3000') {
+        // 前端开发服务器端口
+        port = '8080'; // 后端端口
+      }
+      
       const wsUrl = `${protocol}//${host}:${port}/api/shell`;
       
-      this.onMessage('正在连接到Shell服务...');
+      console.log('正在连接WebSocket:', wsUrl); // 添加调试信息
+      this.onMessage(`正在连接到Shell服务...(${wsUrl})`);
       
       this.websocket = new WebSocket(wsUrl);
       

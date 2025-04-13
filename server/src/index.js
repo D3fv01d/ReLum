@@ -5,8 +5,19 @@ const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
 const dotenv = require('dotenv');
-const shellService = require('./services/shellService');
 const logger = require('./utils/logger');
+const dockerService = require('./services/dockerService');
+
+// 判断是否在Docker环境中运行
+const isRunningInDocker = process.env.SHELL_ACCESS_ENABLED === 'true' || false;
+
+// 根据环境选择合适的Shell服务实现
+const shellService = isRunningInDocker 
+  ? require('./services/dockerShellService') 
+  : require('./services/shellService');
+
+// 记录运行环境
+logger.info(`服务运行于${isRunningInDocker ? 'Docker' : '本地'}环境`);
 
 // 加载环境变量
 dotenv.config();
@@ -24,6 +35,59 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Docker靶场环境API
+app.get('/api/target/check-docker', async (req, res) => {
+  try {
+    const dockerStatus = await dockerService.checkDockerInstalled();
+    res.status(200).json(dockerStatus);
+  } catch (error) {
+    logger.error(`检查Docker失败: ${error.message}`);
+    res.status(500).json({ 
+      installed: false, 
+      error: true, 
+      message: error.message 
+    });
+  }
+});
+
+app.post('/api/target/start', async (req, res) => {
+  try {
+    const { target } = req.body;
+    
+    if (!target || !target.dockerImage) {
+      return res.status(400).json({ error: true, message: '缺少必要参数' });
+    }
+    
+    const result = await dockerService.startTargetEnvironment(target);
+    res.status(200).json(result);
+  } catch (error) {
+    logger.error(`启动靶场环境失败: ${error.message}`);
+    res.status(500).json({ error: true, message: error.message });
+  }
+});
+
+app.post('/api/target/install-defaults', async (req, res) => {
+  try {
+    // 从请求中引入环境配置
+    const targetEnvironments = require('../../src/config/targetEnvironments');
+    const result = await dockerService.installDefaultTargets(targetEnvironments);
+    res.status(200).json(result);
+  } catch (error) {
+    logger.error(`安装默认靶场环境失败: ${error.message}`);
+    res.status(500).json({ error: true, message: error.message });
+  }
+});
+
+app.get('/api/target/images', async (req, res) => {
+  try {
+    const images = await dockerService.getInstalledImages();
+    res.status(200).json({ images });
+  } catch (error) {
+    logger.error(`获取已安装镜像失败: ${error.message}`);
+    res.status(500).json({ error: true, message: error.message, images: [] });
+  }
+});
+
 // 创建HTTP服务器
 const server = http.createServer(app);
 
@@ -34,6 +98,9 @@ const wss = new WebSocket.Server({ server, path: '/api/shell' });
 wss.on('connection', (ws, req) => {
   const ip = req.socket.remoteAddress;
   logger.info(`新的WebSocket连接来自: ${ip}`);
+  
+  // 添加调试信息
+  logger.info(`WebSocket握手请求头: ${JSON.stringify(req.headers)}`);
   
   // 创建Shell会话
   const shellSession = shellService.createSession();

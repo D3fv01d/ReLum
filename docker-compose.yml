@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  relum-app:
+    build: .
+    container_name: relum-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"  # 前端端口
+      - "8080:8080"  # 后端端口
+    volumes:
+      # 挂载日志目录
+      - ./server/logs:/app/server/logs
+      # 如果有数据需要持久化，可以添加更多挂载
+      # 挂载主机目录到容器中，使Shell服务能访问宿主机文件系统
+      - /:/host-system:ro
+    environment:
+      - NODE_ENV=production
+      # 添加Shell服务环境变量
+      - SHELL_ACCESS_ENABLED=true
+      - HOST_SYSTEM_PATH=/host-system
+      # WebSocket支持配置
+      - WS_ENABLED=true
+    networks:
+      - relum-network
+    # 设置较长的健康检查间隔，确保服务完全启动
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  relum-network:
+    driver: bridge 
