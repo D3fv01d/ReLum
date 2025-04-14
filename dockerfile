@@ -3,6 +3,9 @@ FROM node:18-alpine
 # 设置工作目录
 WORKDIR /app
 
+# 安装docker客户端
+RUN apk add --no-cache docker curl wget net-tools procps
+
 # 设置环境变量
 ENV NODE_ENV=production
 

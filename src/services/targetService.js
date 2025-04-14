@@ -105,22 +105,58 @@ const getInstalledImages = async () => {
 // 检查Docker是否安装
 const checkDockerInstalled = async () => {
   try {
-    const response = await fetch('/api/target/check-docker', {
+    // 使用完整的API URL而不是相对路径
+    // 在容器内部使用本地地址
+    const apiUrl = window.location.hostname === 'localhost' 
+      ? 'http://localhost:8080/api/target/check-docker'
+      : `${window.location.protocol}//${window.location.hostname}:8080/api/target/check-docker`;
+    
+    console.log('正在请求Docker状态，URL:', apiUrl);
+
+    const response = await fetch(apiUrl, {
       method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache'
+      },
     });
     
     if (!response.ok) {
+      console.error('Docker状态检查API返回错误状态码:', response.status);
       throw new Error(`HTTP错误 ${response.status}`);
     }
     
-    const result = await response.json();
+    // 先尝试获取文本内容进行调试
+    const textContent = await response.text();
+    console.log('API响应原始内容:', textContent);
+    
+    let result;
+    try {
+      // 然后将文本解析为JSON
+      result = JSON.parse(textContent);
+    } catch (jsonError) {
+      console.error('JSON解析失败:', jsonError, '原始内容:', textContent);
+      throw new Error(`JSON解析失败: ${jsonError.message}`);
+    }
+    
+    console.log('Docker状态检查结果:', result);
     return result;
   } catch (error) {
     console.error('检查Docker安装状态失败:', error);
     if (error.message.includes('JSON')) {
-      return { installed: false, error: '服务器返回了无效响应，可能是Docker服务未运行' };
+      return { 
+        installed: false, 
+        error: '服务器返回了无效响应，可能是Docker服务未运行',
+        details: error.message
+      };
     }
-    return { installed: false, error: error.message };
+    // 添加更详细的错误信息
+    return { 
+      installed: false, 
+      error: '检查Docker状态失败，请确保Docker服务正在运行',
+      details: error.message,
+      fix: 'Docker未安装或无法访问，请重启Docker容器或检查Docker套接字挂载'
+    };
   }
 };
 

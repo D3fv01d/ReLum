@@ -31,19 +31,53 @@ const ensureStorageDir = () => {
 // 检查Docker是否已安装
 const checkDockerInstalled = () => {
   return new Promise((resolve, reject) => {
+    // 优先检查socket文件是否存在
+    if (fs.existsSync('/var/run/docker.sock')) {
+      logger.info('Docker套接字文件存在，尝试使用套接字连接Docker');
+    } else {
+      logger.warn('Docker套接字文件不存在，可能需要挂载: /var/run/docker.sock');
+    }
+
+    // 先检查Docker客户端版本
     exec('docker --version', (error, stdout, stderr) => {
       if (error) {
-        logger.error(`Docker未安装或无法访问: ${error.message}`);
-        resolve({ installed: false, message: `未找到Docker: ${error.message}` });
+        logger.error(`Docker客户端未安装或无法访问: ${error.message}`);
+        resolve({ installed: false, message: `未找到Docker客户端: ${error.message}` });
       } else {
-        // 检查Docker是否正在运行
-        exec('docker info', (infoError, infoStdout, infoStderr) => {
+        const clientVersion = stdout.trim();
+        logger.info(`Docker客户端已安装: ${clientVersion}`);
+        
+        // 然后检查Docker守护进程
+        exec('docker info', { timeout: 10000 }, (infoError, infoStdout, infoStderr) => {
           if (infoError) {
-            logger.error(`Docker已安装但未运行: ${infoError.message}`);
-            resolve({ installed: false, message: 'Docker已安装但未运行，请启动Docker服务' });
+            logger.error(`Docker客户端无法连接到守护进程: ${infoError.message}`);
+            
+            // 尝试不同的环境变量配置
+            const alternativeCommand = 'DOCKER_HOST=unix:///var/run/docker.sock docker info';
+            logger.info('尝试使用显式DOCKER_HOST环境变量重试连接');
+            
+            exec(alternativeCommand, { timeout: 10000 }, (altError, altStdout, altStderr) => {
+              if (altError) {
+                logger.error(`使用显式套接字路径仍然无法连接: ${altError.message}`);
+                resolve({ 
+                  installed: false, 
+                  message: '找到Docker客户端但无法连接到Docker守护进程，请确保Docker服务正在运行，并且已正确挂载Docker套接字',
+                  error: infoError.message,
+                  clientVersion
+                });
+              } else {
+                logger.info('使用显式套接字路径成功连接到Docker守护进程');
+                resolve({ installed: true, version: clientVersion, socketTest: '使用显式套接字成功' });
+              }
+            });
           } else {
-            logger.info(`Docker已安装并运行: ${stdout.trim()}`);
-            resolve({ installed: true, version: stdout.trim() });
+            const serverVersion = infoStdout.match(/Server Version: (.*)/);
+            if (serverVersion && serverVersion[1]) {
+              logger.info(`Docker守护进程运行正常，服务器版本: ${serverVersion[1]}`);
+            } else {
+              logger.info('Docker守护进程运行正常，但无法获取服务器版本');
+            }
+            resolve({ installed: true, version: clientVersion });
           }
         });
       }
@@ -105,7 +139,7 @@ const checkContainerRunning = (containerName) => {
 };
 
 // 启动Docker容器
-const startContainer = (imageName, containerName, port, internalPort = 80) => {
+const startContainer = (imageName, containerName, port, internalPort = 80, options = {}) => {
   return new Promise(async (resolve, reject) => {
     try {
       // 检查是否已经有同名容器在运行
@@ -119,10 +153,36 @@ const startContainer = (imageName, containerName, port, internalPort = 80) => {
       
       // 停止并移除任何同名的容器
       exec(`docker rm -f ${containerName} 2>/dev/null || true`, async (error) => {
+        // 构建Docker运行命令
+        let runCmd = `docker run -d --name ${containerName} -p ${port}:${internalPort}`;
+        
+        // 添加环境变量
+        if (options.env && Array.isArray(options.env)) {
+          options.env.forEach(env => {
+            runCmd += ` -e ${env}`;
+          });
+        }
+        
+        // 添加卷挂载
+        if (options.volumes && Array.isArray(options.volumes)) {
+          options.volumes.forEach(volume => {
+            runCmd += ` -v ${volume}`;
+          });
+        }
+        
+        // 添加自定义Docker参数
+        if (options.dockerParams) {
+          runCmd += ` ${options.dockerParams}`;
+        }
+        
+        // 添加镜像名称
+        runCmd += ` ${imageName}`;
+        
         // 启动新容器
         logger.info(`启动容器: ${containerName} 从镜像 ${imageName}`);
+        logger.debug(`运行命令: ${runCmd}`);
         
-        exec(`docker run -d --name ${containerName} -p ${port}:${internalPort} ${imageName}`, (error, stdout, stderr) => {
+        exec(runCmd, (error, stdout, stderr) => {
           if (error) {
             logger.error(`启动容器失败: ${containerName}, 错误: ${error.message}`);
             reject(new Error(`启动容器失败: ${error.message}`));
@@ -153,6 +213,55 @@ const stopContainer = (containerName) => {
   });
 };
 
+// 获取容器信息
+const getContainerInfo = (containerName) => {
+  return new Promise((resolve, reject) => {
+    exec(`docker inspect ${containerName}`, (error, stdout, stderr) => {
+      if (error) {
+        logger.error(`获取容器信息失败: ${containerName}, 错误: ${error.message}`);
+        reject(error);
+      } else {
+        try {
+          const containerInfo = JSON.parse(stdout)[0];
+          resolve(containerInfo);
+        } catch (parseError) {
+          reject(new Error(`解析容器信息失败: ${parseError.message}`));
+        }
+      }
+    });
+  });
+};
+
+// 配置靶场环境暴露端口
+const findAvailablePort = (startPort = 10000, endPort = 20000) => {
+  return new Promise((resolve, reject) => {
+    // 获取当前使用的端口
+    exec('netstat -tln | grep -E \':[0-9]+\'', (error, stdout, stderr) => {
+      try {
+        // 解析所有已用端口
+        const usedPorts = new Set();
+        stdout.split('\n').forEach(line => {
+          const match = line.match(/:(\d+)/);
+          if (match && match[1]) {
+            usedPorts.add(parseInt(match[1], 10));
+          }
+        });
+        
+        // 查找可用端口
+        for (let port = startPort; port <= endPort; port++) {
+          if (!usedPorts.has(port)) {
+            return resolve(port);
+          }
+        }
+        
+        reject(new Error('找不到可用端口'));
+      } catch (err) {
+        reject(err);
+      }
+    });
+  });
+};
+
 // 启动靶场环境
 const startTargetEnvironment = async (target) => {
   try {
@@ -173,18 +282,35 @@ const startTargetEnvironment = async (target) => {
       await pullImage(target.dockerImage);
     }
     
+    // 分配端口
+    let port = target.port;
+    if (!port) {
+      port = await findAvailablePort();
+    }
+    
     // 生成容器名称
-    const containerName = `relum-${target.dockerImage.split('/').pop().replace(/:/g, '-')}`;
+    const containerName = target.containerName || 
+      `relum-${target.dockerImage.split('/').pop().replace(/:/g, '-')}-${Date.now().toString().slice(-6)}`;
+    
+    // 准备容器启动选项 
+    const options = {
+      env: target.env || [],
+      volumes: target.volumes || [],
+      dockerParams: target.dockerParams || ''
+    };
+    
+    // 确定内部端口
+    const internalPort = target.internalPort || 80;
     
     // 启动容器
-    const result = await startContainer(target.dockerImage, containerName, target.port);
+    const result = await startContainer(target.dockerImage, containerName, port, internalPort, options);
     
     return {
       error: false,
       message: `靶场环境已启动`,
       containerName,
-      port: target.port,
-      url: `http://localhost:${target.port}`
+      port,
+      url: `http://localhost:${port}`
     };
   } catch (error) {
     logger.error(`启动靶场环境失败: ${error.message}`);
@@ -250,21 +376,110 @@ const installDefaultTargets = async (targetEnvironments) => {
 // 获取已安装的Docker镜像
 const getInstalledImages = () => {
   return new Promise((resolve, reject) => {
-    exec('docker images --format "{{.Repository}}:{{.Tag}}"', (error, stdout, stderr) => {
+    exec('docker images --format "{{.Repository}}:{{.Tag}} {{.ID}} {{.Size}} {{.CreatedSince}}"', (error, stdout, stderr) => {
       if (error) {
+        logger.error(`获取镜像列表失败: ${error.message}`);
         reject(error);
       } else {
-        const images = stdout.trim().split('\n').filter(img => img.startsWith('relum/'));
+        const images = stdout.trim().split('\n')
+          .filter(line => line.trim() !== '')
+          .map(line => {
+            const [fullName, id, size, createdSince] = line.split(' ');
+            
+            // 将全名分割为仓库和标签
+            const [repository, tag] = fullName.includes(':') 
+              ? fullName.split(':') 
+              : [fullName, 'latest'];
+            
+            return {
+              repository,
+              tag,
+              fullName,
+              id,
+              size,
+              createdSince
+            };
+          });
+        
         resolve(images);
       }
     });
   });
 };
 
+// 获取运行中的容器
+const getRunningContainers = () => {
+  return new Promise((resolve, reject) => {
+    exec('docker ps --format "{{.ID}} {{.Names}} {{.Image}} {{.Ports}} {{.Status}}"', (error, stdout, stderr) => {
+      if (error) {
+        logger.error(`获取容器列表失败: ${error.message}`);
+        reject(error);
+      } else {
+        const containers = stdout.trim().split('\n')
+          .filter(line => line.trim() !== '')
+          .map(line => {
+            const [id, name, image, ports, ...statusParts] = line.split(' ');
+            const status = statusParts.join(' ');
+            
+            // 解析端口映射
+            const portMappings = [];
+            if (ports) {
+              const portRegex = /(\d+\.\d+\.\d+\.\d+):(\d+)->(\d+)\/(\w+)/g;
+              let match;
+              while ((match = portRegex.exec(ports)) !== null) {
+                portMappings.push({
+                  hostIp: match[1],
+                  hostPort: match[2],
+                  containerPort: match[3],
+                  protocol: match[4]
+                });
+              }
+            }
+            
+            return {
+              id,
+              name,
+              image,
+              portMappings,
+              status,
+              isRelumContainer: name.startsWith('relum-')
+            };
+          })
+          .filter(container => container.isRelumContainer); // 只返回由ReLum启动的容器
+        
+        resolve(containers);
+      }
+    });
+  });
+};
+
+// 移除镜像
+const removeImage = (imageId) => {
+  return new Promise((resolve, reject) => {
+    exec(`docker rmi -f ${imageId}`, (error, stdout, stderr) => {
+      if (error) {
+        logger.error(`移除镜像失败: ${imageId}, 错误: ${error.message}`);
+        reject(error);
+      } else {
+        logger.info(`镜像已移除: ${imageId}`);
+        resolve();
+      }
+    });
+  });
+};
+
+// 导出模块
 module.exports = {
   checkDockerInstalled,
-  startTargetEnvironment,
+  checkImageExists,
+  pullImage,
+  startContainer,
   stopContainer,
+  getContainerInfo,
+  startTargetEnvironment,
   installDefaultTargets,
-  getInstalledImages
+  getInstalledImages,
+  getRunningContainers,
+  removeImage,
+  findAvailablePort
 }; 

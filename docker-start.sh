@@ -8,6 +8,23 @@ cd /app/server
 npm install --silent
 cd /app
 
+# 检查Docker是否可用
+echo "检查Docker可用性..."
+if ! docker --version > /dev/null 2>&1; then
+  echo "警告: Docker客户端未安装或不可用，尝试安装..."
+  apk add --no-cache docker
+fi
+
+# 检查Docker守护进程是否可访问
+if ! docker info > /dev/null 2>&1; then
+  echo "警告: 无法连接到Docker守护进程，检查Docker套接字是否正确挂载"
+  echo "确保在启动容器时添加了以下卷挂载:"
+  echo "  -v /var/run/docker.sock:/var/run/docker.sock"
+else
+  echo "Docker连接正常，可以管理Docker环境"
+  docker info | grep "Server Version"
+fi
+
 # 安装调试工具
 echo "安装调试工具..."
 apk add --no-cache curl wget net-tools procps
@@ -15,7 +32,7 @@ apk add --no-cache curl wget net-tools procps
 # 启动后端服务
 echo "启动后端服务..."
 cd /app/server
-NODE_ENV=production SHELL_ACCESS_ENABLED=true HOST_SYSTEM_PATH=/host-system WS_ENABLED=true node src/index.js &
+NODE_ENV=production SHELL_ACCESS_ENABLED=true HOST_SYSTEM_PATH=/host-system WS_ENABLED=true DOCKER_HOST=unix:///var/run/docker.sock node src/index.js &
 BACKEND_PID=$!
 
 # 等待后端服务启动
@@ -64,6 +81,7 @@ echo "ReLum 平台已成功启动！"
 echo "前端访问地址：http://localhost:3000"
 echo "后端服务地址：http://localhost:8080"
 echo "WebSocket Shell服务：ws://localhost:8080/api/shell"
+echo "Docker靶场管理API：http://localhost:8080/api/target"
 
 # 保持容器运行
 wait 

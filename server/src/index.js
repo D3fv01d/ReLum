@@ -50,6 +50,29 @@ app.get('/api/target/check-docker', async (req, res) => {
   }
 });
 
+// 获取所有可用的靶场环境镜像
+app.get('/api/target/images', async (req, res) => {
+  try {
+    const images = await dockerService.getInstalledImages();
+    res.status(200).json({ images });
+  } catch (error) {
+    logger.error(`获取已安装镜像失败: ${error.message}`);
+    res.status(500).json({ error: true, message: error.message, images: [] });
+  }
+});
+
+// 获取正在运行的容器
+app.get('/api/target/containers', async (req, res) => {
+  try {
+    const containers = await dockerService.getRunningContainers();
+    res.status(200).json({ containers });
+  } catch (error) {
+    logger.error(`获取运行中容器失败: ${error.message}`);
+    res.status(500).json({ error: true, message: error.message, containers: [] });
+  }
+});
+
+// 启动靶场环境
 app.post('/api/target/start', async (req, res) => {
   try {
     const { target } = req.body;
@@ -66,6 +89,68 @@ app.post('/api/target/start', async (req, res) => {
   }
 });
 
+// 停止靶场环境
+app.post('/api/target/stop', async (req, res) => {
+  try {
+    const { containerName } = req.body;
+    
+    if (!containerName) {
+      return res.status(400).json({ error: true, message: '缺少容器名称参数' });
+    }
+    
+    await dockerService.stopContainer(containerName);
+    res.status(200).json({ error: false, message: '容器已停止' });
+  } catch (error) {
+    logger.error(`停止容器失败: ${error.message}`);
+    res.status(500).json({ error: true, message: error.message });
+  }
+});
+
+// 获取容器详细信息
+app.get('/api/target/container/:name', async (req, res) => {
+  try {
+    const { name } = req.params;
+    const containerInfo = await dockerService.getContainerInfo(name);
+    res.status(200).json({ containerInfo });
+  } catch (error) {
+    logger.error(`获取容器信息失败: ${error.message}`);
+    res.status(500).json({ error: true, message: error.message });
+  }
+});
+
+// 拉取Docker镜像
+app.post('/api/target/pull', async (req, res) => {
+  try {
+    const { imageName } = req.body;
+    
+    if (!imageName) {
+      return res.status(400).json({ error: true, message: '缺少镜像名称参数' });
+    }
+    
+    // 异步拉取镜像，不等待完成
+    dockerService.pullImage(imageName)
+      .then(() => logger.info(`镜像拉取成功: ${imageName}`))
+      .catch(err => logger.error(`镜像拉取失败: ${err.message}`));
+    
+    res.status(200).json({ error: false, message: '开始拉取镜像，请稍后查看结果' });
+  } catch (error) {
+    logger.error(`拉取镜像请求失败: ${error.message}`);
+    res.status(500).json({ error: true, message: error.message });
+  }
+});
+
+// 删除Docker镜像
+app.delete('/api/target/image/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await dockerService.removeImage(id);
+    res.status(200).json({ error: false, message: '镜像已删除' });
+  } catch (error) {
+    logger.error(`删除镜像失败: ${error.message}`);
+    res.status(500).json({ error: true, message: error.message });
+  }
+});
+
 app.post('/api/target/install-defaults', async (req, res) => {
   try {
     // 从请求中引入环境配置
@@ -75,16 +160,6 @@ app.post('/api/target/install-defaults', async (req, res) => {
   } catch (error) {
     logger.error(`安装默认靶场环境失败: ${error.message}`);
     res.status(500).json({ error: true, message: error.message });
-  }
-});
-
-app.get('/api/target/images', async (req, res) => {
-  try {
-    const images = await dockerService.getInstalledImages();
-    res.status(200).json({ images });
-  } catch (error) {
-    logger.error(`获取已安装镜像失败: ${error.message}`);
-    res.status(500).json({ error: true, message: error.message, images: [] });
   }
 });
 
