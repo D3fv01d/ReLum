@@ -139,9 +139,9 @@ const targetEnvironments = {
     description: '文件上传漏洞实验环境，包含各种上传限制绕过方法的练习',
     sections: {
       'JavaScript校验绕过': {
-        dockerImage: 'relum/upload-js-bypass:latest',
+        dockerImage: 'aicit11/upliad:v1.0',
         port: null,
-        internalPort: 80,
+        internalPort: 6789,
         description: '前端JavaScript校验绕过实验环境',
         defaultInstall: true
       },
@@ -240,7 +240,7 @@ const targetEnvironments = {
     description: '文件包含漏洞实验环境，练习本地和远程文件包含的利用',
     sections: {
       '基础文件包含': {
-        dockerImage: 'relum/file-inclusion-basic:latest',
+        dockerImage: 'aicit11/fileinclude:v1.0',
         port: null,
         internalPort: 80,
         description: '基础文件包含漏洞实验环境',
@@ -464,9 +464,9 @@ const targetEnvironments = {
         defaultInstall: true
       },
       'Redis漏洞利用': {
-        dockerImage: 'relum/db-redis:latest',
+        dockerImage: 'aicit11/redis:v1.2',
         port: null,
-        internalPort: 6379,
+        internalPort: 5000,
         description: 'Redis漏洞利用实验环境',
         defaultInstall: true
       },
