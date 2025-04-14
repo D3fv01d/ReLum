@@ -71,6 +71,34 @@ npm start
 npm run build
 ```
 
+## Docker环境使用与更新
+
+### 启动Docker环境
+
+```bash
+docker-compose up -d
+```
+
+### 更新Docker环境（代码修改后）
+
+1. 停止现有容器：
+
+```bash
+docker-compose down
+```
+
+2. 使用最新代码重新构建镜像：
+
+```bash
+docker-compose build
+```
+
+3. 启动新容器：
+
+```bash
+docker-compose up -d
+```
+
 ## 项目结构
 
 ```
