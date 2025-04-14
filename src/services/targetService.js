@@ -53,6 +53,7 @@ const startTargetEnvironment = async (knowledgeId, sectionTitle) => {
         target: {
           dockerImage: target.dockerImage,
           port: target.port,
+          internalPort: target.internalPort,
           description: target.description
         }
       }),
@@ -70,6 +71,17 @@ const startTargetEnvironment = async (knowledgeId, sectionTitle) => {
     try {
       // 然后将文本解析为JSON
       result = JSON.parse(textContent);
+      
+      // 更新状态消息
+      if (result.downloadStatus) {
+        // 如果是下载状态，传递给调用者
+        result.status = result.downloadStatus;
+      } else {
+        // 默认成功消息
+        result.status = '靶场环境已成功启动';
+      }
+      
+      console.log('靶场环境启动结果:', result);
     } catch (jsonError) {
       console.error('JSON解析失败:', jsonError, '原始内容:', textContent);
       throw new Error(`JSON解析失败: ${jsonError.message}`);

