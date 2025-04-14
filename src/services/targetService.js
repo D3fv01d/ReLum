@@ -1,5 +1,5 @@
 // 靶场服务
-import targetEnvironments from '../config/targetEnvironments';
+import getRandomPort, { targetEnvironments } from '../config/targetEnvironments';
 
 // 获取靶场环境配置
 const getTargetEnvironments = () => {
@@ -35,10 +35,19 @@ const startTargetEnvironment = async (knowledgeId, sectionTitle) => {
       return { error: true, message: '未找到对应的靶场环境' };
     }
     
-    const response = await fetch('/api/target/start', {
+    // 使用完整的API URL而不是相对路径
+    const apiUrl = window.location.hostname === 'localhost' 
+      ? 'http://localhost:8080/api/target/start'
+      : `${window.location.protocol}//${window.location.hostname}:8080/api/target/start`;
+    
+    console.log('正在请求启动靶场环境，URL:', apiUrl);
+    
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache'
       },
       body: JSON.stringify({
         target: {
@@ -53,7 +62,19 @@ const startTargetEnvironment = async (knowledgeId, sectionTitle) => {
       throw new Error(`HTTP错误 ${response.status}`);
     }
     
-    const result = await response.json();
+    // 先尝试获取文本内容进行调试
+    const textContent = await response.text();
+    console.log('API响应原始内容:', textContent);
+    
+    let result;
+    try {
+      // 然后将文本解析为JSON
+      result = JSON.parse(textContent);
+    } catch (jsonError) {
+      console.error('JSON解析失败:', jsonError, '原始内容:', textContent);
+      throw new Error(`JSON解析失败: ${jsonError.message}`);
+    }
+    
     return result;
   } catch (error) {
     console.error('启动靶场环境失败:', error);
@@ -64,10 +85,19 @@ const startTargetEnvironment = async (knowledgeId, sectionTitle) => {
 // 安装所有默认靶场环境
 const installDefaultTargets = async () => {
   try {
-    const response = await fetch('/api/target/install-defaults', {
+    // 使用完整的API URL而不是相对路径
+    const apiUrl = window.location.hostname === 'localhost' 
+      ? 'http://localhost:8080/api/target/install-defaults'
+      : `${window.location.protocol}//${window.location.hostname}:8080/api/target/install-defaults`;
+    
+    console.log('正在请求安装默认靶场环境，URL:', apiUrl);
+    
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache'
       }
     });
     
@@ -75,7 +105,19 @@ const installDefaultTargets = async () => {
       throw new Error(`HTTP错误 ${response.status}`);
     }
     
-    const result = await response.json();
+    // 先尝试获取文本内容进行调试
+    const textContent = await response.text();
+    console.log('API响应原始内容:', textContent);
+    
+    let result;
+    try {
+      // 然后将文本解析为JSON
+      result = JSON.parse(textContent);
+    } catch (jsonError) {
+      console.error('JSON解析失败:', jsonError, '原始内容:', textContent);
+      throw new Error(`JSON解析失败: ${jsonError.message}`);
+    }
+    
     return result;
   } catch (error) {
     console.error('安装默认靶场环境失败:', error);
@@ -86,15 +128,38 @@ const installDefaultTargets = async () => {
 // 获取已安装的Docker镜像
 const getInstalledImages = async () => {
   try {
-    const response = await fetch('/api/target/images', {
+    // 使用完整的API URL而不是相对路径
+    const apiUrl = window.location.hostname === 'localhost' 
+      ? 'http://localhost:8080/api/target/images'
+      : `${window.location.protocol}//${window.location.hostname}:8080/api/target/images`;
+    
+    console.log('正在请求获取已安装镜像，URL:', apiUrl);
+    
+    const response = await fetch(apiUrl, {
       method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache'
+      }
     });
     
     if (!response.ok) {
       throw new Error(`HTTP错误 ${response.status}`);
     }
     
-    const result = await response.json();
+    // 先尝试获取文本内容进行调试
+    const textContent = await response.text();
+    console.log('API响应原始内容:', textContent);
+    
+    let result;
+    try {
+      // 然后将文本解析为JSON
+      result = JSON.parse(textContent);
+    } catch (jsonError) {
+      console.error('JSON解析失败:', jsonError, '原始内容:', textContent);
+      throw new Error(`JSON解析失败: ${jsonError.message}`);
+    }
+    
     return result;
   } catch (error) {
     console.error('获取已安装镜像失败:', error);
