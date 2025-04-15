@@ -53,22 +53,14 @@ ReLum是一个专业的网络安全学习和实践平台，提供全面的漏洞
 
 ## 安装和运行
 
-1. 安装依赖：
+1. 安装：
+### 构建docker镜像
 
 ```bash
-npm install
+docker-compose build
 ```
 
-2. 启动开发服务器：
 
-```bash
-npm start
-```
-
-3. 构建生产版本：
-
-```bash
-npm run build
 ```
 
 ## Docker环境使用与更新
