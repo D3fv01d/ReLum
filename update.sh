@@ -21,8 +21,14 @@ print_warning() {
 }
 
 # 确保脚本在项目根目录运行
-if [ ! -f "./docker-compose.yml" ]; then
+if [ ! -d ".git" ] || [ ! -f "./docker-compose.yml" ]; then
   print_error "请在项目根目录运行此脚本"
+  exit 1
+fi
+
+# 检查Git是否安装
+if ! command -v git &> /dev/null; then
+  print_error "Git未安装，请先安装Git"
   exit 1
 fi
 
@@ -44,18 +50,55 @@ if ! docker info &> /dev/null; then
   exit 1
 fi
 
-# 停止可能已存在的容器
-print_message "正在停止可能已存在的容器..."
-docker-compose down &> /dev/null
+# 显示当前分支和状态
+print_message "当前分支和状态:"
+git status -s
 
-# 启动Docker容器
-print_message "正在启动ReLum安全实验平台..."
-docker-compose up -d
+# 询问是否有未保存的更改需要保存
+read -p "$(echo -e ${YELLOW}"是否有未保存的更改需要提交? (y/n): "${NC})" save_changes
+if [[ $save_changes == "y" || $save_changes == "Y" ]]; then
+  read -p "$(echo -e ${YELLOW}"请输入提交描述: "${NC})" commit_message
+  git add .
+  git commit -m "$commit_message"
+  print_message "本地更改已提交"
+fi
 
-# 检查容器是否成功启动
+# 拉取最新代码
+print_message "正在从远程仓库拉取最新代码..."
+git pull
+
+# 如果有冲突，退出脚本
 if [ $? -ne 0 ]; then
-  print_error "启动失败，请检查docker-compose.yml配置或查看日志"
+  print_error "拉取代码时出现冲突，请手动解决后再运行更新脚本"
   exit 1
+fi
+
+# 询问是否需要重建镜像
+read -p "$(echo -e ${YELLOW}"是否需要重建Docker镜像? (y/n): "${NC})" rebuild_image
+if [[ $rebuild_image == "y" || $rebuild_image == "Y" ]]; then
+  # 停止当前运行的容器
+  print_message "正在停止当前运行的容器..."
+  docker-compose down
+  
+  # 重建并启动容器
+  print_message "正在重建并启动容器..."
+  docker-compose up -d --build
+else
+  # 仅重启容器
+  print_message "正在重启容器，应用最新代码..."
+  docker-compose down
+  docker-compose up -d
+fi
+
+# 清理未使用的镜像
+read -p "$(echo -e ${YELLOW}"是否清理未使用的Docker镜像和容器? (y/n): "${NC})" clean_docker
+if [[ $clean_docker == "y" || $clean_docker == "Y" ]]; then
+  print_message "正在清理未使用的Docker镜像和容器..."
+  # 清理未使用的容器
+  docker container prune -f
+  # 清理未使用的镜像
+  docker image prune -f
+  print_message "清理完成"
 fi
 
 # 等待服务完全启动
@@ -73,7 +116,7 @@ fi
 HOST_IP=$(hostname -I | awk '{print $1}')
 
 # 显示启动信息
-print_message "${GREEN}ReLum 安全实验平台已成功启动！${NC}"
+print_message "${GREEN}ReLum 安全实验平台已成功更新并启动！${NC}"
 print_message "访问地址："
 print_message "本地访问：${BLUE}http://localhost:3000${NC}"
 if [ ! -z "$HOST_IP" ]; then
@@ -88,4 +131,4 @@ print_message ""
 print_message "使用以下命令停止服务："
 print_message "  ${YELLOW}docker-compose down${NC}"
 print_message ""
-print_message "祝使用愉快！" 
+print_message "祝使用愉快！"
