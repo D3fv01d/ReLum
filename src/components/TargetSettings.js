@@ -77,10 +77,36 @@ const TargetSettings = () => {
     try {
       const result = await getInstalledImages();
       if (result.images) {
-        setInstalledImages(result.images);
+        // 确保每个镜像对象都有必需的属性
+        const processedImages = Array.isArray(result.images) ? result.images.map(image => {
+          // 如果image只是一个字符串，将其转换为对象格式
+          if (typeof image === 'string') {
+            return {
+              fullName: image,
+              repository: image.split(':')[0] || image,
+              tag: image.split(':')[1] || 'latest',
+              id: image,
+              size: '未知',
+              createdSince: '未知'
+            };
+          }
+          // 如果image是对象但缺少某些属性，则补全
+          return {
+            repository: image.repository || image.name || '未知',
+            tag: image.tag || 'latest',
+            fullName: image.fullName || `${image.repository || image.name || '未知'}:${image.tag || 'latest'}`,
+            id: image.id || image.fullName || image,
+            size: image.size || '未知',
+            createdSince: image.createdSince || '未知'
+          };
+        }) : [];
+        setInstalledImages(processedImages);
+      } else {
+        setInstalledImages([]);
       }
     } catch (error) {
       console.error('获取已安装镜像失败:', error);
+      setInstalledImages([]);
     }
   };
   
@@ -318,7 +344,7 @@ const TargetSettings = () => {
                   <tbody className="divide-y divide-gray-600">
                     {installedImages.map((image, index) => (
                       <tr key={index} className={index % 2 === 0 ? 'bg-gray-700' : 'bg-gray-750'}>
-                        <td className="px-4 py-3 text-sm text-white">{image}</td>
+                        <td className="px-4 py-3 text-sm text-white">{typeof image === 'string' ? image : image.fullName}</td>
                         <td className="px-4 py-3 text-sm">
                           <span className="px-2 py-1 text-xs rounded-full bg-green-900 text-green-300">
                             已安装
@@ -344,7 +370,10 @@ const TargetSettings = () => {
                   <div className="space-y-2">
                     {Object.keys(targetEnvironments[category].sections || {}).map(sectionName => {
                       const target = targetEnvironments[category].sections[sectionName];
-                      const isInstalled = installedImages.includes(target.dockerImage);
+                      const isInstalled = installedImages.some(img => 
+                        (typeof img === 'string' && img === target.dockerImage) || 
+                        (img && img.fullName === target.dockerImage)
+                      );
                       
                       return (
                         <div key={sectionName} className="flex justify-between items-center p-2 bg-gray-800 rounded">
