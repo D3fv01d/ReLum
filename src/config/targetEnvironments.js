@@ -79,7 +79,7 @@ const targetEnvironments = {
         internalPort: 5000,
         description: '反射型XSS实验环境，练习通过URL参数等触发的XSS',
         defaultInstall: true,
-        flag: 'flag{xss_reflect_success}'
+        flag: 'CTF{94a375e3d6eecc6d}'
       },
       '存储型跨站脚本': {
         dockerImage: 'dogls/xss-storage:latest',
@@ -87,7 +87,7 @@ const targetEnvironments = {
         internalPort: 5000,
         description: '存储型XSS实验环境，练习持久化存储的XSS攻击',
         defaultInstall: true,
-        flag: 'flag{xss_storage_success}'
+        flag: 'flag{this_is_a_fake_flag_for_demo}'
       },
       'DOM型跨站脚本': {
         dockerImage: 'dogls/xss-dom:latest',
@@ -95,7 +95,7 @@ const targetEnvironments = {
         internalPort: 5000,
         description: 'DOM型XSS实验环境，练习客户端JavaScript引起的XSS',
         defaultInstall: false,
-        flag: 'flag{xss_dom_success}'
+        flag: 'FLAG{DOM_XSS_SUCCESS}'
       },
       '利用XSS平台获取Cookie': {
         dockerImage: 'dogls/xss-demo:1.0',
@@ -118,7 +118,7 @@ const targetEnvironments = {
         internalPort: 5000,
         description: 'GET型CSRF实验环境，利用简单请求构造攻击',
         defaultInstall: true,
-        flag: 'flag{csrf_get_success}'
+        flag: 'flag{H0w_T0_Use_Flask_For_Web_Dev}'
       },
       'POST型CSRF': {
         dockerImage: 'dogls/csrf-post:latest',
@@ -126,7 +126,7 @@ const targetEnvironments = {
         internalPort: 5000,
         description: 'POST型CSRF实验环境，利用表单提交构造攻击',
         defaultInstall: true,
-        flag: 'flag{csrf_post_success}'
+        flag: 'flag{H0w_T0_Use_Flask_For_Web_Dev}'
       },
       'CSRF Token窃取': {
         dockerImage: 'dogls/csrf-token:latest',
@@ -134,7 +134,7 @@ const targetEnvironments = {
         internalPort: 5000,
         description: 'CSRF Token窃取实验环境，练习绕过Token防护的攻击方法',
         defaultInstall: false,
-        flag: 'flag{csrf_token_success}'
+        flag: 'FLAG{CSRF_ATTACK_SUCCESSFUL}'
       }
     }
   },
@@ -215,7 +215,7 @@ const targetEnvironments = {
         internalPort: 80,
         description: 'PHP命令执行漏洞实验环境',
         defaultInstall: true,
-        flag: 'flag{php_command_exec_success}'
+        flag: 'FLAG{PHP_C0mm4nd_Ex3cut10n_Vuln3r4b1l1ty}'
       },
       'Java命令执行': {
         dockerImage: 'dogls/java-exec:latest',
@@ -223,7 +223,7 @@ const targetEnvironments = {
         internalPort: 8080,
         description: 'Java命令执行漏洞实验环境',
         defaultInstall: true,
-        flag: 'flag{java_command_exec_success}'
+        flag: 'FLAG{J4v4_D3s3r14l1z4t10n_4nd_RCE}'
       },
       'Python模板注入': {
         dockerImage: 'dogls/python-ssti:latest',
@@ -231,7 +231,7 @@ const targetEnvironments = {
         internalPort: 5000,
         description: 'Python模板注入命令执行实验环境',
         defaultInstall: false,
-        flag: 'flag{python_ssti_success}'
+        flag: 'FLAG{SSTI_Vuln3r4b1l1ty_T3mpl4t3_1nj3ct10n}'
       },
       '反弹shell': {
         dockerImage: 'relum/command-exec-revshell:latest',
@@ -290,7 +290,7 @@ const targetEnvironments = {
         internalPort: 5000,
         description: '有回显的XXE漏洞实验环境',
         defaultInstall: true,
-        flag: 'flag{xxe_withecho_success}'
+        flag: 'flag{XXE_is_pwned_dd328f11a9}'
       },
       '无回显的XXE': {
         dockerImage: 'dogls/xxe-withoutecho:latest',
@@ -298,7 +298,7 @@ const targetEnvironments = {
         internalPort: 5000,
         description: '无回显的XXE漏洞实验环境，练习带外数据通道技术',
         defaultInstall: false,
-        flag: 'flag{xxe_withoutecho_success}'
+        flag: 'flag{XXE_is_pwned_dd328f11a9}'
       }
     }
   },
