@@ -1,6 +1,9 @@
 // 靶场服务
 import getRandomPort, { targetEnvironments } from '../config/targetEnvironments';
 
+// 本地存储键名
+const RUNNING_TARGETS_STORAGE_KEY = 'relum_running_targets';
+
 // 获取靶场环境配置
 const getTargetEnvironments = () => {
   return targetEnvironments;
@@ -16,12 +19,96 @@ const getTargetsForKnowledge = (knowledgeId) => {
 
 // 获取特定知识点下特定章节的靶场环境
 const getTargetForSection = (knowledgeId, sectionTitle) => {
-  if (
-    targetEnvironments[knowledgeId] && 
-    targetEnvironments[knowledgeId].sections && 
-    targetEnvironments[knowledgeId].sections[sectionTitle]
-  ) {
-    return targetEnvironments[knowledgeId].sections[sectionTitle];
+  console.log('获取靶场环境 - 知识点ID:', knowledgeId);
+  console.log('获取靶场环境 - 章节标题:', sectionTitle);
+  console.log('已配置的知识点:', Object.keys(targetEnvironments));
+  
+  if (targetEnvironments[knowledgeId]) {
+    console.log('找到知识点配置');
+    console.log('知识点章节列表:', Object.keys(targetEnvironments[knowledgeId].sections || {}));
+    
+    if (
+      targetEnvironments[knowledgeId] && 
+      targetEnvironments[knowledgeId].sections && 
+      targetEnvironments[knowledgeId].sections[sectionTitle]
+    ) {
+      console.log('找到匹配的靶场环境配置:', targetEnvironments[knowledgeId].sections[sectionTitle]);
+      return targetEnvironments[knowledgeId].sections[sectionTitle];
+    } else {
+      console.log('未找到匹配的靶场环境配置');
+    }
+  } else {
+    console.log('未找到知识点配置');
+  }
+  
+  return null;
+};
+
+// 获取已运行的靶场环境
+const getRunningTargets = () => {
+  try {
+    const storedTargets = localStorage.getItem(RUNNING_TARGETS_STORAGE_KEY);
+    if (storedTargets) {
+      return JSON.parse(storedTargets);
+    }
+  } catch (error) {
+    console.error('获取已运行靶场环境失败:', error);
+  }
+  return {};
+};
+
+// 保存已运行的靶场环境到本地存储
+const saveRunningTarget = (knowledgeId, sectionTitle, targetInfo) => {
+  try {
+    const runningTargets = getRunningTargets();
+    
+    // 使用双层键存储，便于查找：知识分类ID -> 章节标题 -> 靶场信息
+    if (!runningTargets[knowledgeId]) {
+      runningTargets[knowledgeId] = {};
+    }
+    
+    runningTargets[knowledgeId][sectionTitle] = {
+      ...targetInfo,
+      timestamp: Date.now() // 记录启动时间
+    };
+    
+    localStorage.setItem(RUNNING_TARGETS_STORAGE_KEY, JSON.stringify(runningTargets));
+  } catch (error) {
+    console.error('保存靶场环境状态失败:', error);
+  }
+};
+
+// 删除已运行的靶场环境
+const removeRunningTarget = (knowledgeId, sectionTitle) => {
+  try {
+    const runningTargets = getRunningTargets();
+    
+    if (runningTargets[knowledgeId] && runningTargets[knowledgeId][sectionTitle]) {
+      delete runningTargets[knowledgeId][sectionTitle];
+      
+      // 如果知识点下没有任何运行的靶场，也删除这个知识点键
+      if (Object.keys(runningTargets[knowledgeId]).length === 0) {
+        delete runningTargets[knowledgeId];
+      }
+      
+      localStorage.setItem(RUNNING_TARGETS_STORAGE_KEY, JSON.stringify(runningTargets));
+    }
+  } catch (error) {
+    console.error('删除靶场环境状态失败:', error);
+  }
+};
+
+// 检查特定靶场环境是否已运行
+const isTargetRunning = (knowledgeId, sectionTitle) => {
+  const runningTargets = getRunningTargets();
+  return !!(runningTargets[knowledgeId] && runningTargets[knowledgeId][sectionTitle]);
+};
+
+// 获取特定靶场环境的运行信息
+const getRunningTargetInfo = (knowledgeId, sectionTitle) => {
+  const runningTargets = getRunningTargets();
+  if (runningTargets[knowledgeId] && runningTargets[knowledgeId][sectionTitle]) {
+    return runningTargets[knowledgeId][sectionTitle];
   }
   return null;
 };
@@ -29,6 +116,16 @@ const getTargetForSection = (knowledgeId, sectionTitle) => {
 // 启动靶场环境
 const startTargetEnvironment = async (knowledgeId, sectionTitle) => {
   try {
+    // 检查本地存储中是否已有运行的靶场环境
+    const runningInfo = getRunningTargetInfo(knowledgeId, sectionTitle);
+    if (runningInfo) {
+      console.log('使用已运行的靶场环境:', runningInfo);
+      return {
+        ...runningInfo,
+        status: '使用已运行的靶场环境'
+      };
+    }
+    
     const target = getTargetForSection(knowledgeId, sectionTitle);
     
     if (!target) {
@@ -81,6 +178,11 @@ const startTargetEnvironment = async (knowledgeId, sectionTitle) => {
         result.status = '靶场环境已成功启动';
       }
       
+      // 保存到本地存储
+      if (!result.error) {
+        saveRunningTarget(knowledgeId, sectionTitle, result);
+      }
+      
       console.log('靶场环境启动结果:', result);
     } catch (jsonError) {
       console.error('JSON解析失败:', jsonError, '原始内容:', textContent);
@@ -91,6 +193,64 @@ const startTargetEnvironment = async (knowledgeId, sectionTitle) => {
   } catch (error) {
     console.error('启动靶场环境失败:', error);
     return { error: true, message: `启动失败: ${error.message}` };
+  }
+};
+
+// 停止靶场环境
+const stopTargetEnvironment = async (knowledgeId, sectionTitle) => {
+  try {
+    const runningInfo = getRunningTargetInfo(knowledgeId, sectionTitle);
+    if (!runningInfo || !runningInfo.containerName) {
+      return { error: true, message: '未找到运行中的靶场环境' };
+    }
+    
+    // 使用完整的API URL而不是相对路径
+    const apiUrl = window.location.hostname === 'localhost' 
+      ? 'http://localhost:8080/api/target/stop'
+      : `${window.location.protocol}//${window.location.hostname}:8080/api/target/stop`;
+    
+    console.log('正在请求停止靶场环境，URL:', apiUrl);
+    
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache'
+      },
+      body: JSON.stringify({
+        containerName: runningInfo.containerName
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP错误 ${response.status}`);
+    }
+    
+    // 先尝试获取文本内容进行调试
+    const textContent = await response.text();
+    console.log('API响应原始内容:', textContent);
+    
+    let result;
+    try {
+      // 然后将文本解析为JSON
+      result = JSON.parse(textContent);
+      
+      // 从本地存储中删除
+      if (!result.error) {
+        removeRunningTarget(knowledgeId, sectionTitle);
+      }
+      
+      console.log('靶场环境停止结果:', result);
+    } catch (jsonError) {
+      console.error('JSON解析失败:', jsonError, '原始内容:', textContent);
+      throw new Error(`JSON解析失败: ${jsonError.message}`);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error('停止靶场环境失败:', error);
+    return { error: true, message: `停止失败: ${error.message}` };
   }
 };
 
@@ -242,7 +402,11 @@ export {
   getTargetsForKnowledge,
   getTargetForSection,
   startTargetEnvironment,
+  stopTargetEnvironment,
   installDefaultTargets,
   getInstalledImages,
-  checkDockerInstalled
+  checkDockerInstalled,
+  getRunningTargets,
+  isTargetRunning,
+  getRunningTargetInfo
 }; 

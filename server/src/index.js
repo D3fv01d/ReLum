@@ -98,10 +98,11 @@ app.post('/api/target/stop', async (req, res) => {
       return res.status(400).json({ error: true, message: '缺少容器名称参数' });
     }
     
+    logger.info(`停止靶场环境: ${containerName}`);
     await dockerService.stopContainer(containerName);
-    res.status(200).json({ error: false, message: '容器已停止' });
+    res.status(200).json({ error: false, message: '靶场环境已停止' });
   } catch (error) {
-    logger.error(`停止容器失败: ${error.message}`);
+    logger.error(`停止靶场环境失败: ${error.message}`);
     res.status(500).json({ error: true, message: error.message });
   }
 });

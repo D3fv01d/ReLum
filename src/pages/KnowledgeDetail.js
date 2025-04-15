@@ -23,10 +23,17 @@ import {
   faGlobe,
   faHdd,
   faExternalLinkAlt,
-  faCopy
+  faCopy,
+  faStopCircle,
+  faPowerOff
 } from '@fortawesome/free-solid-svg-icons';
 import TerminalFeature from '../components/TerminalPanel';
-import { startTargetEnvironment } from '../services/targetService';
+import { 
+  startTargetEnvironment, 
+  stopTargetEnvironment, 
+  getRunningTargetInfo,
+  isTargetRunning
+} from '../services/targetService';
 
 // 知识库数据 - 实际应用中可从API获取
 const knowledgeData = {
@@ -1211,6 +1218,47 @@ function KnowledgeDetail() {
     }
   };
 
+  // 处理停止靶场环境
+  const handleStopEnvironment = async (section) => {
+    try {
+      // 设置状态为停止中
+      setTargetEnvStatus({ ...targetEnvStatus, loading: true, status: '正在停止靶场环境...' });
+      
+      // 调用API停止环境
+      const result = await stopTargetEnvironment(categoryId, section.title);
+      
+      if (result.error) {
+        setTargetEnvStatus({ 
+          loading: false, 
+          error: result.message, 
+          url: targetEnvStatus.url,
+          containerName: targetEnvStatus.containerName,
+          port: targetEnvStatus.port,
+          status: '停止环境失败'
+        });
+      } else {
+        // 成功停止环境
+        setTargetEnvStatus({ 
+          loading: false, 
+          error: null, 
+          url: null,
+          containerName: null,
+          port: null,
+          status: '靶场环境已停止'
+        });
+        setActiveSection(null);
+      }
+    } catch (error) {
+      console.error('停止环境失败:', error);
+      setTargetEnvStatus({ 
+        ...targetEnvStatus,
+        loading: false, 
+        error: error.message,
+        status: '停止环境出错' 
+      });
+    }
+  };
+
   // 处理实验按钮点击
   const handleExperimentClick = async (section) => {
     setActiveSection(section);
@@ -1218,8 +1266,14 @@ function KnowledgeDetail() {
     setTargetEnvStatus({ loading: true, error: null, url: null, status: '正在准备启动靶场环境...' });
     
     try {
+      // 添加调试信息
+      console.log('实验按钮点击 - 知识点ID:', categoryId);
+      console.log('实验按钮点击 - 章节标题:', section.title);
+      
       // 启动对应的靶场环境
       const result = await startTargetEnvironment(categoryId, section.title);
+      
+      console.log('靶场环境启动结果:', result);
       
       if (result.error) {
         // 处理错误
@@ -1234,17 +1288,43 @@ function KnowledgeDetail() {
           ipAddress: result.ipAddress,
           containerName: result.containerName,
           port: result.port,
-          status: '靶场环境已成功启动'
+          status: result.status || '靶场环境已成功启动'
         });
         
         // 可以选择自动在新窗口打开环境
-        if (result.url) {
+        if (result.url && result.status !== '使用已运行的靶场环境') {
           window.open(result.url, '_blank');
         }
       }
     } catch (error) {
       console.error('启动环境失败:', error);
       setTargetEnvStatus({ loading: false, error: error.message, url: null });
+    }
+  };
+
+  // 检查每个章节是否有运行中的靶场环境
+  const checkRunningEnvironments = () => {
+    if (!category || !category.sections) return;
+    
+    // 遍历所有章节，查找运行中的环境
+    for (const section of category.sections) {
+      const runningInfo = getRunningTargetInfo(categoryId, section.title);
+      if (runningInfo) {
+        // 找到运行中的环境，设置状态
+        setActiveSection(section);
+        setTargetEnvStatus({
+          loading: false,
+          error: null,
+          url: runningInfo.url,
+          localUrl: runningInfo.localUrl,
+          ipAddress: runningInfo.ipAddress,
+          containerName: runningInfo.containerName,
+          port: runningInfo.port,
+          status: '靶场环境已启动'
+        });
+        // 只恢复第一个找到的环境状态
+        break;
+      }
     }
   };
 
@@ -1260,6 +1340,13 @@ function KnowledgeDetail() {
       setLoading(false);
     }, 300);
   }, [categoryId]);
+
+  // 页面加载后检查运行中的环境
+  useEffect(() => {
+    if (!loading && category) {
+      checkRunningEnvironments();
+    }
+  }, [loading, category]);
 
   // 如果正在加载
   if (loading) {
@@ -1448,8 +1535,8 @@ function KnowledgeDetail() {
                     </div>
                   </div>
                   
-                  <div className="mt-2 flex">
-                    <a href={targetEnvStatus.url} target="_blank" rel="noopener noreferrer" className="bg-primary hover:bg-primary/90 text-white px-3 py-1 rounded text-xs flex items-center mr-2">
+                  <div className="mt-2 flex space-x-2">
+                    <a href={targetEnvStatus.url} target="_blank" rel="noopener noreferrer" className="bg-primary hover:bg-primary/90 text-white px-3 py-1 rounded text-xs flex items-center">
                       <FontAwesomeIcon icon={faExternalLinkAlt} className="mr-1" />
                       打开环境
                     </a>
@@ -1457,6 +1544,13 @@ function KnowledgeDetail() {
                       <FontAwesomeIcon icon={faCopy} className="mr-1" />
                       复制地址
                       {copyStatus && <span className="ml-1">{copyStatus}</span>}
+                    </button>
+                    <button
+                      className="bg-red-700 hover:bg-red-600 text-white px-3 py-1 rounded text-xs flex items-center"
+                      onClick={() => handleStopEnvironment(section)}
+                    >
+                      <FontAwesomeIcon icon={faPowerOff} className="mr-1" />
+                      关闭环境
                     </button>
                   </div>
                 </div>

@@ -139,7 +139,7 @@ const targetEnvironments = {
     description: '文件上传漏洞实验环境，包含各种上传限制绕过方法的练习',
     sections: {
       'JavaScript校验绕过': {
-        dockerImage: 'aicit11/upliad:v1.0',
+        dockerImage: 'aicit11/upliad:v1.2',
         port: null,
         internalPort: 6789,
         description: '前端JavaScript校验绕过实验环境',
@@ -456,25 +456,25 @@ const targetEnvironments = {
     title: '数据库漏洞利用实战',
     description: '数据库漏洞利用实验环境，练习各种数据库服务的漏洞利用',
     sections: {
-      'MySQL漏洞利用': {
+      'MySQL典型漏洞利用': {
         dockerImage: 'relum/db-mysql:latest',
         port: null,
         internalPort: 3306,
-        description: 'MySQL漏洞利用实验环境',
+        description: 'MySQL漏洞利用实验环境，练习MySQL安全漏洞利用技术',
         defaultInstall: true
       },
-      'Redis漏洞利用': {
-        dockerImage: 'aicit11/redis:v1.2',
+      'Redis典型漏洞利用': {
+        dockerImage: 'aicit11/redis:v1.3',
         port: null,
         internalPort: 5000,
-        description: 'Redis漏洞利用实验环境',
+        description: 'Redis漏洞利用实验环境，练习Redis未授权访问和安全漏洞利用',
         defaultInstall: true
       },
-      'PostgreSQL漏洞利用': {
+      'PostgreSQL典型漏洞利用': {
         dockerImage: 'relum/db-postgresql:latest',
         port: null,
         internalPort: 5432,
-        description: 'PostgreSQL漏洞利用实验环境',
+        description: 'PostgreSQL漏洞利用实验环境，练习PostgreSQL安全漏洞利用',
         defaultInstall: false
       }
     }
