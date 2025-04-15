@@ -42,7 +42,7 @@ function Knowledge() {
       icon: faPaperPlane,
       title: '跨站请求伪造漏洞',
       description: '诱导用户执行非本意的操作，利用已有的身份认证',
-      items: ['GET型CSRF', 'POST型CSRF', 'CSRF漏洞POC改造', 'CSRF绕过Referer检测']
+      items: ['GET型CSRF', 'POST型CSRF', 'CSRF Token窃取']
     },
     {
       id: 'file-upload',

