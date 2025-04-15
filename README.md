@@ -104,16 +104,41 @@ docker-compose up -d
 ```
 relum/
 ├── public/             # 静态资源
-├── src/                # 源代码
+├── src/                # 前端源代码
 │   ├── components/     # 可复用组件
+│   │   ├── Navbar.js         # 导航栏组件
+│   │   ├── TargetSettings.js # 靶场环境设置组件
 │   │   └── TerminalPanel.js  # Shell终端组件
+│   ├── config/         # 配置文件
+│   │   ├── ai.js             # AI助手配置
+│   │   └── targetEnvironments.js # 靶场环境配置
 │   ├── pages/          # 页面组件
 │   │   ├── Dashboard.js      # 仪表盘页面
-│   │   ├── Knowledge.js      # 知识库页面  
-│   │   └── Practice.js       # 实践页面
+│   │   ├── Knowledge.js      # 知识库列表页面  
+│   │   ├── KnowledgeDetail.js # 知识库详情页面
+│   │   ├── Practice.js       # 实践页面
+│   │   └── Settings.js       # 设置页面
+│   ├── services/       # 服务层
+│   │   ├── aiService.js      # AI助手服务
+│   │   └── targetService.js  # 靶场环境服务
 │   ├── App.js          # 主应用组件
-│   └── index.js        # 应用入口点
-├── package.json        # 项目依赖
+│   ├── index.js        # 应用入口点
+│   └── index.css       # 全局样式
+├── server/             # 后端服务
+│   ├── src/            # 后端源代码
+│   │   ├── services/         # 后端服务层
+│   │   ├── utils/            # 工具函数
+│   │   └── index.js          # 服务入口点
+│   ├── logs/           # 服务日志
+│   ├── package.json    # 后端依赖
+│   └── .env            # 环境变量
+├── build/              # 构建输出目录
+├── docker-compose.yml  # Docker Compose配置
+├── dockerfile          # Docker构建文件
+├── docker-start.sh     # Docker启动脚本
+├── start.sh            # 本地启动脚本
+├── package.json        # 前端依赖
+├── tailwind.config.js  # Tailwind CSS配置
 └── README.md           # 项目文档
 ```
 
@@ -124,4 +149,4 @@ relum/
 - 添加在线评测系统
 - 集成AI辅助学习功能
 
-# 最后更新时间: 2025年 4月 9日 星期三 09时19分12秒 CST
+# 最后更新时间: 2025年 4月 15日 星期二 16时38分49秒 CST
