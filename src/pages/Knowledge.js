@@ -63,7 +63,7 @@ function Knowledge() {
       icon: faTerminal,
       title: '命令/代码执行漏洞',
       description: '在目标系统上执行恶意命令或代码获取控制权',
-      items: ['绕过字符串过滤限制', '无回显的命令执行', '利用命令/代码执行漏洞写木马', '反弹shell']
+      items: ['PHP命令执行', 'Java命令执行', 'Python模板注入', '反弹shell']
     },
     {
       id: 'file-inclusion',

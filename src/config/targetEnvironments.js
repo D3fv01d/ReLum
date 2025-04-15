@@ -74,23 +74,23 @@ const targetEnvironments = {
     description: '跨站脚本(XSS)漏洞实验环境，涵盖各种XSS类型和利用方法',
     sections: {
       '反射型跨站脚本': {
-        dockerImage: 'relum/xss-reflected:latest',
+        dockerImage: 'dogls/xss-reflect:latest',
         port: null,
-        internalPort: 80,
+        internalPort: 5000,
         description: '反射型XSS实验环境，练习通过URL参数等触发的XSS',
         defaultInstall: true
       },
       '存储型跨站脚本': {
-        dockerImage: 'relum/xss-stored:latest',
+        dockerImage: 'dogls/xss-storage:latest',
         port: null,
-        internalPort: 80,
+        internalPort: 5000,
         description: '存储型XSS实验环境，练习持久化存储的XSS攻击',
         defaultInstall: true
       },
       'DOM型跨站脚本': {
-        dockerImage: 'relum/xss-dom:latest',
+        dockerImage: 'dogls/xss-dom:latest',
         port: null,
-        internalPort: 80,
+        internalPort: 5000,
         description: 'DOM型XSS实验环境，练习客户端JavaScript引起的XSS',
         defaultInstall: false
       },
@@ -203,25 +203,25 @@ const targetEnvironments = {
     title: '命令/代码执行漏洞',
     description: '命令和代码执行漏洞实验环境，练习如何利用执行类漏洞获取系统控制权',
     sections: {
-      '命令执行基础': {
-        dockerImage: 'relum/command-exec-basic:latest',
+      'PHP命令执行': {
+        dockerImage: 'dogls/php-exec:latest',
         port: null,
         internalPort: 80,
-        description: '基础命令执行漏洞实验环境',
+        description: 'PHP命令执行漏洞实验环境',
         defaultInstall: true
       },
-      '绕过字符串过滤限制': {
-        dockerImage: 'relum/command-exec-bypass:latest',
+      'Java命令执行': {
+        dockerImage: 'dogls/java-exec:latest',
         port: null,
-        internalPort: 80,
-        description: '命令执行过滤绕过实验环境',
+        internalPort: 8080,
+        description: 'Java命令执行漏洞实验环境',
         defaultInstall: true
       },
-      '无回显命令执行': {
-        dockerImage: 'relum/command-exec-blind:latest',
+      'Python模板注入': {
+        dockerImage: 'dogls/python-ssti:latest',
         port: null,
-        internalPort: 80,
-        description: '无回显命令执行实验环境，练习盲注技术',
+        internalPort: 5000,
+        description: 'Python模板注入命令执行实验环境',
         defaultInstall: false
       },
       '反弹shell': {
@@ -276,16 +276,16 @@ const targetEnvironments = {
     description: 'XML外部实体注入(XXE)漏洞实验环境，练习如何利用XXE漏洞',
     sections: {
       '有回显的XXE': {
-        dockerImage: 'relum/xxe-echo:latest',
+        dockerImage: 'dogls/xxe-withecho:latest',
         port: null,
-        internalPort: 80,
+        internalPort: 5000,
         description: '有回显的XXE漏洞实验环境',
         defaultInstall: true
       },
       '无回显的XXE': {
-        dockerImage: 'relum/xxe-blind:latest',
+        dockerImage: 'dogls/xxe-withoutecho:latest',
         port: null,
-        internalPort: 80,
+        internalPort: 5000,
         description: '无回显的XXE漏洞实验环境，练习带外数据通道技术',
         defaultInstall: false
       }
