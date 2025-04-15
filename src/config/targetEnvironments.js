@@ -110,24 +110,24 @@ const targetEnvironments = {
     description: '跨站请求伪造(CSRF)漏洞实验环境，练习如何构造和利用CSRF漏洞',
     sections: {
       'GET型CSRF': {
-        dockerImage: 'relum/csrf-get:latest',
+        dockerImage: 'dogls/csrf-get:latest',
         port: null,
-        internalPort: 80,
+        internalPort: 5000,
         description: 'GET型CSRF实验环境，利用简单请求构造攻击',
         defaultInstall: true
       },
       'POST型CSRF': {
-        dockerImage: 'relum/csrf-post:latest',
+        dockerImage: 'dogls/csrf-post:latest',
         port: null,
-        internalPort: 80,
+        internalPort: 5000,
         description: 'POST型CSRF实验环境，利用表单提交构造攻击',
         defaultInstall: true
       },
-      'CSRF漏洞POC改造': {
-        dockerImage: 'relum/csrf-advanced:latest',
+      'CSRF Token窃取': {
+        dockerImage: 'dogls/csrf-token:latest',
         port: null,
-        internalPort: 80,
-        description: 'CSRF高级利用实验环境，练习复杂CSRF攻击场景',
+        internalPort: 5000,
+        description: 'CSRF Token窃取实验环境，练习绕过Token防护的攻击方法',
         defaultInstall: false
       }
     }

