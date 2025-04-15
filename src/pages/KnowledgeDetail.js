@@ -1184,78 +1184,72 @@ function KnowledgeDetail() {
   const [loading, setLoading] = useState(false);
   const [category, setCategory] = useState(null);
   const [activeSection, setActiveSection] = useState(null);
-  const [targetEnvStatus, setTargetEnvStatus] = useState({ loading: false, error: null, url: null, status: '正在准备启动靶场环境...' });
+  const [targetEnvStatuses, setTargetEnvStatuses] = useState({});
+  const [targetEnvStatus, setTargetEnvStatus] = useState({ loading: false, error: null, url: null });
   const [copyStatus, setCopyStatus] = useState('');
 
-  // 处理复制地址
-  const handleCopyUrl = () => {
-    // 优先使用公网地址，其次使用访问地址，最后使用本地地址
-    const urlToCopy = 
-      (targetEnvStatus.accessUrls && targetEnvStatus.accessUrls.public) || 
-      targetEnvStatus.url || 
-      targetEnvStatus.localUrl || 
-      (targetEnvStatus.accessUrls && targetEnvStatus.accessUrls.localhost);
-    
-    if (urlToCopy) {
-      navigator.clipboard.writeText(urlToCopy)
-        .then(() => {
-          setCopyStatus('已复制');
-          setTimeout(() => setCopyStatus(''), 2000);
-        })
-        .catch(err => {
-          console.error('复制失败:', err);
-          setCopyStatus('复制失败');
-          setTimeout(() => setCopyStatus(''), 2000);
-        });
-    }
-  };
-
-  // 处理停止靶场环境
-  const handleStopEnvironment = async (section) => {
-    try {
-      // 设置状态为停止中
-      setTargetEnvStatus({ ...targetEnvStatus, loading: true, status: '正在停止靶场环境...' });
-      
-      // 调用API停止环境
-      const result = await stopTargetEnvironment(categoryId, section.title);
-      
-      if (result.error) {
-        setTargetEnvStatus({ 
-          loading: false, 
-          error: result.message, 
-          url: targetEnvStatus.url,
-          containerName: targetEnvStatus.containerName,
-          port: targetEnvStatus.port,
-          status: '停止环境失败'
-        });
-      } else {
-        // 成功停止环境
-        setTargetEnvStatus({ 
-          loading: false, 
-          error: null, 
-          url: null,
-          containerName: null,
-          port: null,
-          status: '靶场环境已停止'
-        });
-        setActiveSection(null);
-      }
-    } catch (error) {
-      console.error('停止环境失败:', error);
-      setTargetEnvStatus({ 
-        ...targetEnvStatus,
-        loading: false, 
-        error: error.message,
-        status: '停止环境出错' 
+  // 处理复制URL到剪贴板
+  const handleCopyUrl = (url) => {
+    if (url) {
+      navigator.clipboard.writeText(url).then(() => {
+        setCopyStatus('✓');
+        setTimeout(() => setCopyStatus(''), 2000);
       });
     }
   };
-
+  
+  // 处理关闭环境
+  const handleStopEnvironment = async (section) => {
+    try {
+      const result = await stopTargetEnvironment(categoryId, section.title);
+      
+      if (result.error) {
+        // 复制当前状态
+        const updatedStatuses = { ...targetEnvStatuses };
+        // 更新指定章节的状态
+        updatedStatuses[section.title] = { 
+          error: result.message, 
+          loading: false, 
+          url: null,
+          status: '关闭环境失败' 
+        };
+        setTargetEnvStatuses(updatedStatuses);
+      } else {
+        // 删除已关闭环境的状态
+        const updatedStatuses = { ...targetEnvStatuses };
+        delete updatedStatuses[section.title];
+        setTargetEnvStatuses(updatedStatuses);
+        
+        // 如果当前活动章节是被关闭的环境，则重置当前状态
+        if (activeSection?.title === section.title) {
+          setTargetEnvStatus({ loading: false, error: null, url: null });
+          setActiveSection(null);
+        }
+      }
+    } catch (error) {
+      console.error('关闭环境失败:', error);
+      // 更新相应环境的错误状态
+      const updatedStatuses = { ...targetEnvStatuses };
+      updatedStatuses[section.title] = { 
+        error: error.message, 
+        loading: false, 
+        url: null,
+        status: '关闭环境失败' 
+      };
+      setTargetEnvStatuses(updatedStatuses);
+    }
+  };
+  
   // 处理实验按钮点击
   const handleExperimentClick = async (section) => {
     setActiveSection(section);
     // 设置状态为加载中
     setTargetEnvStatus({ loading: true, error: null, url: null, status: '正在准备启动靶场环境...' });
+    
+    // 更新特定章节的状态为加载中
+    const updatedStatuses = { ...targetEnvStatuses };
+    updatedStatuses[section.title] = { loading: true, error: null, url: null, status: '正在准备启动靶场环境...' };
+    setTargetEnvStatuses(updatedStatuses);
     
     try {
       // 添加调试信息
@@ -1270,9 +1264,14 @@ function KnowledgeDetail() {
       if (result.error) {
         // 处理错误
         setTargetEnvStatus({ loading: false, error: result.message, url: null });
+        
+        // 更新特定章节的错误状态
+        const updatedStatuses = { ...targetEnvStatuses };
+        updatedStatuses[section.title] = { loading: false, error: result.message, url: null };
+        setTargetEnvStatuses(updatedStatuses);
       } else {
         // 成功启动环境
-        setTargetEnvStatus({ 
+        const envStatus = { 
           loading: false, 
           error: null, 
           url: result.url,
@@ -1281,7 +1280,14 @@ function KnowledgeDetail() {
           containerName: result.containerName,
           port: result.port,
           status: result.status || '靶场环境已成功启动'
-        });
+        };
+        
+        setTargetEnvStatus(envStatus);
+        
+        // 更新特定章节的成功状态
+        const updatedStatuses = { ...targetEnvStatuses };
+        updatedStatuses[section.title] = envStatus;
+        setTargetEnvStatuses(updatedStatuses);
         
         // 可以选择自动在新窗口打开环境
         if (result.url && result.status !== '使用已运行的靶场环境') {
@@ -1291,6 +1297,11 @@ function KnowledgeDetail() {
     } catch (error) {
       console.error('启动环境失败:', error);
       setTargetEnvStatus({ loading: false, error: error.message, url: null });
+      
+      // 更新特定章节的错误状态
+      const updatedStatuses = { ...targetEnvStatuses };
+      updatedStatuses[section.title] = { loading: false, error: error.message, url: null };
+      setTargetEnvStatuses(updatedStatuses);
     }
   };
 
@@ -1298,13 +1309,15 @@ function KnowledgeDetail() {
   const checkRunningEnvironments = () => {
     if (!category || !category.sections) return;
     
+    const updatedStatuses = { ...targetEnvStatuses };
+    let foundActiveSection = false;
+    
     // 遍历所有章节，查找运行中的环境
     for (const section of category.sections) {
       const runningInfo = getRunningTargetInfo(categoryId, section.title);
       if (runningInfo) {
         // 找到运行中的环境，设置状态
-        setActiveSection(section);
-        setTargetEnvStatus({
+        const envStatus = {
           loading: false,
           error: null,
           url: runningInfo.url,
@@ -1313,11 +1326,20 @@ function KnowledgeDetail() {
           containerName: runningInfo.containerName,
           port: runningInfo.port,
           status: '靶场环境已启动'
-        });
-        // 只恢复第一个找到的环境状态
-        break;
+        };
+        
+        updatedStatuses[section.title] = envStatus;
+        
+        // 设置第一个找到的环境为活动环境
+        if (!foundActiveSection) {
+          setActiveSection(section);
+          setTargetEnvStatus(envStatus);
+          foundActiveSection = true;
+        }
       }
     }
+    
+    setTargetEnvStatuses(updatedStatuses);
   };
 
   useEffect(() => {
@@ -1461,29 +1483,29 @@ function KnowledgeDetail() {
                   <button 
                     className="bg-primary hover:bg-primary/90 text-white px-3 py-1 rounded flex items-center text-sm transition-colors duration-200"
                     onClick={() => handleExperimentClick(section)}
-                    disabled={targetEnvStatus.loading}
+                    disabled={targetEnvStatuses[section.title]?.loading}
                   >
                     <FontAwesomeIcon icon={faPlayCircle} className="mr-1" />
                     实验
-                    {targetEnvStatus.loading && activeSection?.title === section.title && (
+                    {targetEnvStatuses[section.title]?.loading && (
                       <span className="ml-1 animate-spin">⋯</span>
                     )}
                   </button>
                 </div>
               </div>
 
-              {targetEnvStatus.error && activeSection?.title === section.title && (
+              {targetEnvStatuses[section.title]?.error && (
                 <div className="mt-2 p-3 bg-[#1E1E1E] rounded-lg">
                   <div className="text-red-400 text-sm flex items-start">
                     <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2 mt-0.5" />
                     <div>
-                      <div className="font-medium">{targetEnvStatus.error}</div>
-                      {targetEnvStatus.details && (
-                        <div className="text-gray-400 text-xs mt-1">{targetEnvStatus.details}</div>
+                      <div className="font-medium">{targetEnvStatuses[section.title].error}</div>
+                      {targetEnvStatuses[section.title].details && (
+                        <div className="text-gray-400 text-xs mt-1">{targetEnvStatuses[section.title].details}</div>
                       )}
-                      {targetEnvStatus.fix && (
+                      {targetEnvStatuses[section.title].fix && (
                         <div className="text-yellow-400 text-xs mt-1">
-                          <span className="font-medium">建议解决方法: </span>{targetEnvStatus.fix}
+                          <span className="font-medium">建议解决方法: </span>{targetEnvStatuses[section.title].fix}
                         </div>
                       )}
                     </div>
@@ -1491,11 +1513,11 @@ function KnowledgeDetail() {
                 </div>
               )}
               
-              {targetEnvStatus.loading && activeSection?.title === section.title && (
+              {targetEnvStatuses[section.title]?.loading && (
                 <div className="mt-2 p-3 bg-[#1E1E1E] rounded-lg text-blue-400 text-sm">
                   <div className="flex items-center">
                     <div className="animate-spin mr-2 h-4 w-4 border-2 border-blue-400 border-t-transparent rounded-full"></div>
-                    <span className="font-medium">{targetEnvStatus.status || '正在启动环境...'}</span>
+                    <span className="font-medium">{targetEnvStatuses[section.title].status || '正在启动环境...'}</span>
                   </div>
                   <div className="mt-2 text-gray-400 text-xs">
                     <p>请稍等，靶场环境正在启动中。这可能需要一点时间：</p>
@@ -1509,60 +1531,60 @@ function KnowledgeDetail() {
                 </div>
               )}
               
-              {!targetEnvStatus.loading && !targetEnvStatus.error && targetEnvStatus.url && activeSection?.title === section.title && (
+              {!targetEnvStatuses[section.title]?.loading && !targetEnvStatuses[section.title]?.error && targetEnvStatuses[section.title]?.url && (
                 <div className="mt-2 p-3 bg-[#1E1E1E] rounded-lg">
                   <div className="flex items-center text-green-400 text-sm mb-2">
                     <FontAwesomeIcon icon={faCheckCircle} className="mr-1" />
-                    {targetEnvStatus.status || '靶场环境已成功启动'}
+                    {targetEnvStatuses[section.title].status || '靶场环境已成功启动'}
                   </div>
                   
                   <div className="space-y-1">
-                    {targetEnvStatus.accessUrls && targetEnvStatus.accessUrls.public && (
+                    {targetEnvStatuses[section.title].accessUrls && targetEnvStatuses[section.title].accessUrls.public && (
                       <div className="text-sm flex">
                         <span className="text-gray-400 w-20">公网地址:</span>
-                        <a href={targetEnvStatus.accessUrls.public} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
-                          {targetEnvStatus.accessUrls.public}
+                        <a href={targetEnvStatuses[section.title].accessUrls.public} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
+                          {targetEnvStatuses[section.title].accessUrls.public}
                         </a>
                       </div>
                     )}
-                    {(!targetEnvStatus.accessUrls || !targetEnvStatus.accessUrls.public) && (
+                    {(!targetEnvStatuses[section.title].accessUrls || !targetEnvStatuses[section.title].accessUrls.public) && (
                       <div className="text-sm flex">
                         <span className="text-gray-400 w-20">访问地址:</span>
-                        <a href={targetEnvStatus.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
-                          {targetEnvStatus.url}
+                        <a href={targetEnvStatuses[section.title].url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
+                          {targetEnvStatuses[section.title].url}
                         </a>
                       </div>
                     )}
-                    {targetEnvStatus.accessUrls && targetEnvStatus.accessUrls.localNetwork && (
+                    {targetEnvStatuses[section.title].accessUrls && targetEnvStatuses[section.title].accessUrls.localNetwork && (
                       <div className="text-sm flex">
                         <span className="text-gray-400 w-20">局域网:</span>
-                        <a href={targetEnvStatus.accessUrls.localNetwork} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
-                          {targetEnvStatus.accessUrls.localNetwork}
+                        <a href={targetEnvStatuses[section.title].accessUrls.localNetwork} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
+                          {targetEnvStatuses[section.title].accessUrls.localNetwork}
                         </a>
                       </div>
                     )}
                     <div className="text-sm flex">
                       <span className="text-gray-400 w-20">本地地址:</span>
-                      <a href={targetEnvStatus.localUrl || (targetEnvStatus.accessUrls && targetEnvStatus.accessUrls.localhost)} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
-                        {targetEnvStatus.localUrl || (targetEnvStatus.accessUrls && targetEnvStatus.accessUrls.localhost)}
+                      <a href={targetEnvStatuses[section.title].localUrl || (targetEnvStatuses[section.title].accessUrls && targetEnvStatuses[section.title].accessUrls.localhost)} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
+                        {targetEnvStatuses[section.title].localUrl || (targetEnvStatuses[section.title].accessUrls && targetEnvStatuses[section.title].accessUrls.localhost)}
                       </a>
                     </div>
                     <div className="text-sm flex">
                       <span className="text-gray-400 w-20">端口:</span>
-                      <span className="text-white">{targetEnvStatus.port}</span>
+                      <span className="text-white">{targetEnvStatuses[section.title].port}</span>
                     </div>
                     <div className="text-sm flex">
                       <span className="text-gray-400 w-20">容器名称:</span>
-                      <span className="text-white truncate">{targetEnvStatus.containerName}</span>
+                      <span className="text-white truncate">{targetEnvStatuses[section.title].containerName}</span>
                     </div>
                   </div>
                   
                   <div className="mt-2 flex space-x-2">
-                    <a href={targetEnvStatus.url || (targetEnvStatus.accessUrls && targetEnvStatus.accessUrls.public)} target="_blank" rel="noopener noreferrer" className="bg-primary hover:bg-primary/90 text-white px-3 py-1 rounded text-xs flex items-center">
+                    <a href={targetEnvStatuses[section.title].url || (targetEnvStatuses[section.title].accessUrls && targetEnvStatuses[section.title].accessUrls.public)} target="_blank" rel="noopener noreferrer" className="bg-primary hover:bg-primary/90 text-white px-3 py-1 rounded text-xs flex items-center">
                       <FontAwesomeIcon icon={faExternalLinkAlt} className="mr-1" />
                       打开环境
                     </a>
-                    <button className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-xs flex items-center" onClick={handleCopyUrl}>
+                    <button className="bg-gray-700 hover:bg-gray-600 text-white px-3 py-1 rounded text-xs flex items-center" onClick={() => handleCopyUrl(targetEnvStatuses[section.title].url)}>
                       <FontAwesomeIcon icon={faCopy} className="mr-1" />
                       复制地址
                       {copyStatus && <span className="ml-1">{copyStatus}</span>}
