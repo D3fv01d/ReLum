@@ -1204,8 +1204,15 @@ function KnowledgeDetail() {
 
   // 处理复制地址
   const handleCopyUrl = () => {
-    if (targetEnvStatus.url) {
-      navigator.clipboard.writeText(targetEnvStatus.url)
+    // 优先使用公网地址，其次使用访问地址，最后使用本地地址
+    const urlToCopy = 
+      (targetEnvStatus.accessUrls && targetEnvStatus.accessUrls.public) || 
+      targetEnvStatus.url || 
+      targetEnvStatus.localUrl || 
+      (targetEnvStatus.accessUrls && targetEnvStatus.accessUrls.localhost);
+    
+    if (urlToCopy) {
+      navigator.clipboard.writeText(urlToCopy)
         .then(() => {
           setCopyStatus('已复制');
           setTimeout(() => setCopyStatus(''), 2000);
@@ -1481,9 +1488,21 @@ function KnowledgeDetail() {
               </div>
 
               {targetEnvStatus.error && activeSection?.title === section.title && (
-                <div className="mt-2 text-red-400 text-sm">
-                  <FontAwesomeIcon icon={faExclamationTriangle} className="mr-1" />
-                  {targetEnvStatus.error}
+                <div className="mt-2 p-3 bg-[#1E1E1E] rounded-lg">
+                  <div className="text-red-400 text-sm flex items-start">
+                    <FontAwesomeIcon icon={faExclamationTriangle} className="mr-2 mt-0.5" />
+                    <div>
+                      <div className="font-medium">{targetEnvStatus.error}</div>
+                      {targetEnvStatus.details && (
+                        <div className="text-gray-400 text-xs mt-1">{targetEnvStatus.details}</div>
+                      )}
+                      {targetEnvStatus.fix && (
+                        <div className="text-yellow-400 text-xs mt-1">
+                          <span className="font-medium">建议解决方法: </span>{targetEnvStatus.fix}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
               
@@ -1513,16 +1532,34 @@ function KnowledgeDetail() {
                   </div>
                   
                   <div className="space-y-1">
-                    <div className="text-sm flex">
-                      <span className="text-gray-400 w-20">访问地址:</span>
-                      <a href={targetEnvStatus.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
-                        {targetEnvStatus.url}
-                      </a>
-                    </div>
+                    {targetEnvStatus.accessUrls && targetEnvStatus.accessUrls.public && (
+                      <div className="text-sm flex">
+                        <span className="text-gray-400 w-20">公网地址:</span>
+                        <a href={targetEnvStatus.accessUrls.public} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
+                          {targetEnvStatus.accessUrls.public}
+                        </a>
+                      </div>
+                    )}
+                    {(!targetEnvStatus.accessUrls || !targetEnvStatus.accessUrls.public) && (
+                      <div className="text-sm flex">
+                        <span className="text-gray-400 w-20">访问地址:</span>
+                        <a href={targetEnvStatus.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
+                          {targetEnvStatus.url}
+                        </a>
+                      </div>
+                    )}
+                    {targetEnvStatus.accessUrls && targetEnvStatus.accessUrls.localNetwork && (
+                      <div className="text-sm flex">
+                        <span className="text-gray-400 w-20">局域网:</span>
+                        <a href={targetEnvStatus.accessUrls.localNetwork} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
+                          {targetEnvStatus.accessUrls.localNetwork}
+                        </a>
+                      </div>
+                    )}
                     <div className="text-sm flex">
                       <span className="text-gray-400 w-20">本地地址:</span>
-                      <a href={targetEnvStatus.localUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
-                        {targetEnvStatus.localUrl}
+                      <a href={targetEnvStatus.localUrl || (targetEnvStatus.accessUrls && targetEnvStatus.accessUrls.localhost)} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline truncate">
+                        {targetEnvStatus.localUrl || (targetEnvStatus.accessUrls && targetEnvStatus.accessUrls.localhost)}
                       </a>
                     </div>
                     <div className="text-sm flex">
@@ -1536,7 +1573,7 @@ function KnowledgeDetail() {
                   </div>
                   
                   <div className="mt-2 flex space-x-2">
-                    <a href={targetEnvStatus.url} target="_blank" rel="noopener noreferrer" className="bg-primary hover:bg-primary/90 text-white px-3 py-1 rounded text-xs flex items-center">
+                    <a href={targetEnvStatus.url || (targetEnvStatus.accessUrls && targetEnvStatus.accessUrls.public)} target="_blank" rel="noopener noreferrer" className="bg-primary hover:bg-primary/90 text-white px-3 py-1 rounded text-xs flex items-center">
                       <FontAwesomeIcon icon={faExternalLinkAlt} className="mr-1" />
                       打开环境
                     </a>

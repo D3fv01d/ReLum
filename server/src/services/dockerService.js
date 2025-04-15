@@ -432,21 +432,86 @@ const findAvailablePort = (startPort = 10000, endPort = 65000) => {
 };
 
 // 获取本机IP地址
-const getLocalIpAddress = () => {
-  const interfaces = os.networkInterfaces();
-  // 尝试从各种网络接口中找到一个非内部的IPv4地址
-  for (const name of Object.keys(interfaces)) {
-    for (const iface of interfaces[name]) {
-      // 跳过内部和非IPv4地址
-      if ('IPv4' !== iface.family || iface.internal !== false) {
-        continue;
+const getLocalIpAddress = async () => {
+  try {
+    // 尝试使用公网IP服务获取公网IP
+    const publicIpPromise = new Promise((resolve) => {
+      const https = require('https');
+      const options = {
+        hostname: 'api.ipify.org',
+        port: 443,
+        path: '/',
+        method: 'GET'
+      };
+
+      const req = https.request(options, res => {
+        let data = '';
+        res.on('data', chunk => {
+          data += chunk;
+        });
+        res.on('end', () => {
+          if (res.statusCode === 200) {
+            logger.info(`获取到公网IP: ${data}`);
+            resolve(data.trim());
+          } else {
+            logger.warn(`获取公网IP失败，状态码: ${res.statusCode}`);
+            resolve(null);
+          }
+        });
+      });
+
+      req.on('error', (error) => {
+        logger.warn(`获取公网IP出错: ${error.message}`);
+        resolve(null);
+      });
+
+      // 设置超时
+      req.setTimeout(3000, () => {
+        logger.warn('获取公网IP超时');
+        req.destroy();
+        resolve(null);
+      });
+
+      req.end();
+    });
+
+    // 使用Promise.race设置整体超时
+    return Promise.race([
+      publicIpPromise,
+      new Promise((resolve) => {
+        setTimeout(() => {
+          logger.warn('获取公网IP总体超时，回退到本地IP');
+          resolve(null);
+        }, 5000);
+      })
+    ]).then(publicIp => {
+      if (publicIp) {
+        return publicIp;
       }
-      // 找到一个可用的外部IPv4地址
-      return iface.address;
-    }
+      
+      // 如果获取公网IP失败，回退到本地IP
+      logger.info('使用本地网络接口IP作为备选');
+      const interfaces = os.networkInterfaces();
+      // 尝试从各种网络接口中找到一个非内部的IPv4地址
+      for (const name of Object.keys(interfaces)) {
+        for (const iface of interfaces[name]) {
+          // 跳过内部和非IPv4地址
+          if ('IPv4' !== iface.family || iface.internal !== false) {
+            continue;
+          }
+          // 找到一个可用的外部IPv4地址
+          logger.info(`使用本地IP地址: ${iface.address}`);
+          return iface.address;
+        }
+      }
+      // 如果没有找到，返回localhost
+      logger.info('未找到本地IP地址，使用localhost');
+      return 'localhost';
+    });
+  } catch (error) {
+    logger.error(`获取IP地址时出错: ${error.message}`);
+    return 'localhost';
   }
-  // 如果没有找到，返回localhost
-  return 'localhost';
 };
 
 // 启动靶场环境
@@ -462,7 +527,7 @@ const startTargetEnvironment = async (target) => {
     ensureStorageDir();
     
     // 获取本机IP - 提前获取方便状态报告
-    const localIp = getLocalIpAddress();
+    const localIp = await getLocalIpAddress();
     
     // 检查镜像是否存在
     const imageExists = await checkImageExists(target.dockerImage);
@@ -615,16 +680,43 @@ const startTargetEnvironment = async (target) => {
     
     downloadStatus = '容器启动成功，环境已就绪';
     
+    // 对于本地开发模式，可能需要使用特殊的IP
+    const actualPort = result.port || port;
+    const isLocalDev = process.env.NODE_ENV === 'development';
+    
+    // 获取本地IP用于局域网访问
+    const interfaces = os.networkInterfaces();
+    let localNetworkIp = 'localhost';
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name]) {
+        if ('IPv4' === iface.family && iface.internal === false) {
+          localNetworkIp = iface.address;
+          break;
+        }
+      }
+      if (localNetworkIp !== 'localhost') break;
+    }
+    
     return {
       error: false,
       message: `靶场环境已启动`,
       containerName,
-      port: result.port || port,  // 使用实际分配的端口，可能与请求的不同
+      port: actualPort,
       downloadStatus,
       platform,
+      // 使用公网IP作为主要访问地址
       ipAddress: localIp,
-      url: `http://${localIp}:${result.port || port}`,
-      localUrl: `http://localhost:${result.port || port}`
+      // 保存不同访问URL以供选择
+      url: `http://${localIp}:${actualPort}`,
+      localUrl: `http://localhost:${actualPort}`,
+      localNetworkUrl: `http://${localNetworkIp}:${actualPort}`,
+      // 是否是公网IP
+      isPublicIp: localIp !== 'localhost' && localIp !== localNetworkIp,
+      accessUrls: {
+        public: `http://${localIp}:${actualPort}`,
+        localhost: `http://localhost:${actualPort}`,
+        localNetwork: `http://${localNetworkIp}:${actualPort}`
+      }
     };
   } catch (error) {
     logger.error(`启动靶场环境失败: ${error.message}`);

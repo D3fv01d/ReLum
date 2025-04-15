@@ -129,7 +129,12 @@ const startTargetEnvironment = async (knowledgeId, sectionTitle) => {
     const target = getTargetForSection(knowledgeId, sectionTitle);
     
     if (!target) {
-      return { error: true, message: '未找到对应的靶场环境' };
+      return { 
+        error: true, 
+        message: '未找到对应的靶场环境',
+        details: `知识点ID: ${knowledgeId}, 章节标题: ${sectionTitle}`,
+        imageInfo: null
+      };
     }
     
     // 使用完整的API URL而不是相对路径
@@ -138,6 +143,14 @@ const startTargetEnvironment = async (knowledgeId, sectionTitle) => {
       : `${window.location.protocol}//${window.location.hostname}:8080/api/target/start`;
     
     console.log('正在请求启动靶场环境，URL:', apiUrl);
+    console.log('发送请求数据:', {
+      target: {
+        dockerImage: target.dockerImage,
+        port: target.port,
+        internalPort: target.internalPort,
+        description: target.description
+      }
+    });
     
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -192,7 +205,44 @@ const startTargetEnvironment = async (knowledgeId, sectionTitle) => {
     return result;
   } catch (error) {
     console.error('启动靶场环境失败:', error);
-    return { error: true, message: `启动失败: ${error.message}` };
+    
+    // 根据错误类型提供更详细的信息
+    if (error.message.includes('拉取镜像失败') || error.message.includes('pull')) {
+      return { 
+        error: true, 
+        message: `启动失败: 拉取镜像失败`, 
+        details: `可能是因为镜像不存在、网络问题或仓库认证失败`,
+        fix: '请检查镜像名称是否正确，并确保网络连接正常，可能需要手动拉取镜像'
+      };
+    } else if (error.message.includes('端口') || error.message.includes('port')) {
+      return { 
+        error: true, 
+        message: `启动失败: 端口分配失败`, 
+        details: error.message,
+        fix: '请检查端口是否被占用，或者尝试手动指定一个可用端口'
+      };
+    } else if (error.message.includes('容器') || error.message.includes('container')) {
+      return { 
+        error: true, 
+        message: `启动失败: 容器创建失败`, 
+        details: error.message,
+        fix: '可能是Docker资源不足或配置问题，尝试重启Docker或清理未使用的容器'
+      };
+    } else if (error.message.includes('Docker')) {
+      return { 
+        error: true, 
+        message: `启动失败: Docker服务问题`, 
+        details: error.message,
+        fix: '请确保Docker服务正在运行，并且有权限访问Docker API'
+      };
+    }
+    
+    // 默认错误信息
+    return { 
+      error: true, 
+      message: `启动失败: ${error.message}`,
+      requestDetails: `知识点: ${knowledgeId}, 章节: ${sectionTitle}`
+    };
   }
 };
 
