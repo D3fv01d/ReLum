@@ -44,7 +44,7 @@ const TargetSettings = () => {
     const installedCount = installedImages.length;
     const installedSize = installedCount * 100; // 估算已安装大小
     
-              return {
+    return {
       totalEnvironments,
       totalSize,
       installedCount,
@@ -123,7 +123,7 @@ const TargetSettings = () => {
   
   const stats = getStats();
     
-    return (
+  return (
     <div className="bg-gray-800 rounded-lg shadow-lg p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-white">靶场环境管理</h2>
@@ -157,11 +157,12 @@ const TargetSettings = () => {
         >
           管理选项
         </button>
-        </div>
+      </div>
       
+      {/* 各个选项卡的内容 */}
       {activeTab === 'status' && (
         <div>
-          {/* Docker状态 */}
+          {/* Docker状态信息和统计信息 */}
           <div className="mb-6 bg-gray-700 p-4 rounded-lg">
             <div className="flex items-center mb-4">
               <FontAwesomeIcon 
@@ -234,7 +235,7 @@ const TargetSettings = () => {
                 <div 
                   className="bg-green-500 h-2 rounded-full" 
                   style={{ width: `${stats.installPercent}%` }}
-              ></div>
+                ></div>
               </div>
               <div className="mt-2 text-xs text-gray-400">{stats.installedSize} MB 已使用</div>
             </div>
@@ -268,8 +269,8 @@ const TargetSettings = () => {
               <div className="mt-2 text-yellow-400 text-sm">
                 <FontAwesomeIcon icon={faExclamationTriangle} className="mr-1" />
                 请先安装Docker才能安装靶场环境
-            </div>
-          )}
+              </div>
+            )}
             
             {installResult && (
               <div className={`mt-4 p-3 rounded ${installResult.error ? 'bg-red-900/30 text-red-300' : 'bg-green-900/30 text-green-300'}`}>
@@ -290,12 +291,12 @@ const TargetSettings = () => {
                     )}
                   </div>
                 )}
-                    </div>
+              </div>
             )}
-                    </div>
-                  </div>
-                )}
-                
+          </div>
+        </div>
+      )}
+      
       {activeTab === 'environments' && (
         <div>
           <div className="mb-4">
@@ -341,7 +342,7 @@ const TargetSettings = () => {
                   </h3>
                   
                   <div className="space-y-2">
-                    {Object.keys(targetEnvironments[category].sections).map(sectionName => {
+                    {Object.keys(targetEnvironments[category].sections || {}).map(sectionName => {
                       const target = targetEnvironments[category].sections[sectionName];
                       const isInstalled = installedImages.includes(target.dockerImage);
                       
@@ -370,16 +371,16 @@ const TargetSettings = () => {
               ))}
             </div>
           </div>
-                  </div>
-                )}
-                
+        </div>
+      )}
+      
       {activeTab === 'settings' && (
         <div>
           <div className="bg-gray-700 p-4 rounded-lg mb-4">
             <h3 className="text-lg font-semibold text-white mb-3">安装与管理</h3>
             
             <div className="space-y-3">
-                    <button 
+              <button 
                 onClick={handleInstallDefaults}
                 disabled={installing || !dockerInstalled}
                 className={`w-full px-4 py-2 rounded flex items-center justify-center ${
@@ -390,14 +391,14 @@ const TargetSettings = () => {
                   <>
                     <FontAwesomeIcon icon={faSync} className="animate-spin mr-2" />
                     安装中...
-                        </>
-                      ) : (
-                        <>
-                          <FontAwesomeIcon icon={faDownload} className="mr-2" />
+                  </>
+                ) : (
+                  <>
+                    <FontAwesomeIcon icon={faDownload} className="mr-2" />
                     安装所有默认靶场环境
-                        </>
-                      )}
-                    </button>
+                  </>
+                )}
+              </button>
               
               <button
                 className="w-full px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500 flex items-center justify-center"
@@ -407,17 +408,17 @@ const TargetSettings = () => {
                 <FontAwesomeIcon icon={faSync} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
                 刷新靶场状态
               </button>
-        </div>
-      </div>
-      
+            </div>
+          </div>
+          
           <div className="bg-gray-700 p-4 rounded-lg">
             <h3 className="text-lg font-semibold text-white mb-3">使用说明</h3>
-      
+            
             <div className="text-gray-300 space-y-2 text-sm">
-          <p>
-            靶场环境采用Docker容器技术，提供独立且安全的实验环境。每个知识点对应一个专门的靶场环境，便于您进行实践操作。
-          </p>
-          <p>
+              <p>
+                靶场环境采用Docker容器技术，提供独立且安全的实验环境。每个知识点对应一个专门的靶场环境，便于您进行实践操作。
+              </p>
+              <p>
                 <span className="font-semibold text-white">使用方法：</span>
                 <ol className="list-decimal list-inside ml-2 mt-1 space-y-1">
                   <li>确保您的系统已安装Docker并启动Docker服务</li>
@@ -432,10 +433,10 @@ const TargetSettings = () => {
                   <li>靶场环境将使用本地硬盘空间和系统资源</li>
                   <li>默认靶场环境大约需要1-2GB存储空间</li>
                   <li>请在实验完成后关闭不需要的环境以释放系统资源</li>
-          </ul>
-          </p>
-        </div>
-      </div>
+                </ul>
+              </p>
+            </div>
+          </div>
         </div>
       )}
     </div>
