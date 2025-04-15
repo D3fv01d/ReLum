@@ -21,71 +21,96 @@ print_warning() {
 }
 
 # 确保脚本在项目根目录运行
-if [ ! -f "./docker-compose.yml" ]; then
+if [ ! -d "./server" ] || [ ! -f "./package.json" ]; then
   print_error "请在项目根目录运行此脚本"
   exit 1
 fi
 
-# 检查Docker是否安装
-if ! command -v docker &> /dev/null; then
-  print_error "Docker未安装，请先安装Docker"
+# 检查必要的端口是否可用
+check_port() {
+  local port=$1
+  if lsof -i:$port -t >/dev/null 2>&1; then
+    local pid=$(lsof -i:$port -t)
+    print_warning "端口 $port 已被进程 $pid 占用，正在尝试结束该进程..."
+    kill $pid
+    sleep 2
+    if lsof -i:$port -t >/dev/null 2>&1; then
+      print_error "无法释放端口 $port，请手动终止进程后重试"
+      return 1
+    else
+      print_message "端口 $port 已成功释放"
+    fi
+  fi
+  return 0
+}
+
+# 检查必要的端口
+print_message "检查端口..."
+check_port 3000 || exit 1  # 前端默认端口
+check_port 8080 || exit 1  # 后端默认端口
+
+# 安装依赖
+print_message "正在检查并安装前端依赖..."
+if [ ! -d "./node_modules" ]; then
+  print_message "安装前端依赖..."
+  npm install || { print_error "前端依赖安装失败"; exit 1; }
+else
+  print_message "前端依赖已安装"
+fi
+
+print_message "正在检查并安装后端依赖..."
+if [ ! -d "./server/node_modules" ]; then
+  cd server
+  print_message "安装后端依赖..."
+  npm install || { print_error "后端依赖安装失败"; cd ..; exit 1; }
+  cd ..
+else
+  print_message "后端依赖已安装"
+fi
+
+# 启动后端服务
+print_message "正在启动后端服务..."
+cd server
+npm run dev &
+BACKEND_PID=$!
+cd ..
+
+# 等待后端服务完全启动
+print_message "等待后端服务启动..."
+sleep 3
+
+# 检查后端服务是否运行
+if ! ps -p $BACKEND_PID > /dev/null; then
+  print_error "后端服务启动失败"
   exit 1
 fi
 
-# 检查docker-compose是否安装
-if ! command -v docker-compose &> /dev/null; then
-  print_error "docker-compose未安装，请先安装docker-compose"
-  exit 1
-fi
+print_message "后端服务已在端口 8080 启动 (PID: $BACKEND_PID)"
 
-# 检查Docker是否在运行
-if ! docker info &> /dev/null; then
-  print_error "Docker服务未启动，请先启动Docker服务"
-  exit 1
-fi
+# 启动前端服务
+print_message "正在启动前端服务..."
+npm start &
+FRONTEND_PID=$!
 
-# 停止可能已存在的容器
-print_message "正在停止可能已存在的容器..."
-docker-compose down &> /dev/null
-
-# 启动Docker容器
-print_message "正在启动ReLum安全实验平台..."
-docker-compose up -d
-
-# 检查容器是否成功启动
-if [ $? -ne 0 ]; then
-  print_error "启动失败，请检查docker-compose.yml配置或查看日志"
-  exit 1
-fi
-
-# 等待服务完全启动
-print_message "正在等待服务启动完成..."
+# 等待前端服务完全启动
+print_message "等待前端服务启动..."
 sleep 5
 
-# 获取容器状态
-CONTAINER_STATUS=$(docker-compose ps | grep "relum")
-if [ -z "$CONTAINER_STATUS" ]; then
-  print_error "容器启动失败，请使用 'docker-compose logs' 查看详细日志"
+# 检查前端服务是否运行
+if ! ps -p $FRONTEND_PID > /dev/null; then
+  print_error "前端服务启动失败"
+  kill $BACKEND_PID
   exit 1
 fi
 
-# 获取宿主机IP地址
-HOST_IP=$(hostname -I | awk '{print $1}')
+print_message "前端服务已在端口 3000 启动 (PID: $FRONTEND_PID)"
 
 # 显示启动信息
 print_message "${GREEN}ReLum 安全实验平台已成功启动！${NC}"
-print_message "访问地址："
-print_message "本地访问：${BLUE}http://localhost:3000${NC}"
-if [ ! -z "$HOST_IP" ]; then
-  print_message "网络访问：${BLUE}http://$HOST_IP:3000${NC}"
-fi
-print_message "API服务：${BLUE}http://localhost:8080${NC}"
-print_message ""
-print_message "使用以下命令查看日志："
-print_message "  前端日志: ${YELLOW}docker-compose logs -f relum-frontend${NC}"
-print_message "  后端日志: ${YELLOW}docker-compose logs -f relum-backend${NC}"
-print_message ""
-print_message "使用以下命令停止服务："
-print_message "  ${YELLOW}docker-compose down${NC}"
-print_message ""
-print_message "祝使用愉快！" 
+print_message "前端访问地址：${BLUE}http://localhost:3000${NC}"
+print_message "后端服务地址：${BLUE}http://localhost:8080${NC}"
+print_message "按 Ctrl+C 可以终止所有服务"
+
+# 等待用户按下Ctrl+C
+trap "print_message '正在关闭服务...'; kill $FRONTEND_PID $BACKEND_PID 2>/dev/null; print_message '服务已关闭'; exit 0" INT
+wait 
