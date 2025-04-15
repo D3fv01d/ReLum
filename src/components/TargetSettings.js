@@ -316,16 +316,23 @@ const TargetSettings = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-600">
-                    {installedImages.map((image, index) => (
-                      <tr key={index} className={index % 2 === 0 ? 'bg-gray-700' : 'bg-gray-750'}>
-                        <td className="px-4 py-3 text-sm text-white">{image}</td>
-                        <td className="px-4 py-3 text-sm">
-                          <span className="px-2 py-1 text-xs rounded-full bg-green-900 text-green-300">
-                            已安装
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
+                    {installedImages.map((image, index) => {
+                      // 处理image可能是对象或字符串的情况
+                      const imageName = typeof image === 'string' 
+                        ? image 
+                        : (image.fullName || `${image.repository || '未知'}:${image.tag || 'latest'}`);
+                      
+                      return (
+                        <tr key={index} className={index % 2 === 0 ? 'bg-gray-700' : 'bg-gray-750'}>
+                          <td className="px-4 py-3 text-sm text-white">{imageName}</td>
+                          <td className="px-4 py-3 text-sm">
+                            <span className="px-2 py-1 text-xs rounded-full bg-green-900 text-green-300">
+                              已安装
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -344,7 +351,15 @@ const TargetSettings = () => {
                   <div className="space-y-2">
                     {Object.keys(targetEnvironments[category].sections || {}).map(sectionName => {
                       const target = targetEnvironments[category].sections[sectionName];
-                      const isInstalled = installedImages.includes(target.dockerImage);
+                      // 检查镜像是否已安装，处理不同格式的镜像名称
+                      const isInstalled = installedImages.some(image => {
+                        if (typeof image === 'string') {
+                          return image === target.dockerImage;
+                        } else {
+                          return image.fullName === target.dockerImage ||
+                                 `${image.repository}:${image.tag}` === target.dockerImage;
+                        }
+                      });
                       
                       return (
                         <div key={sectionName} className="flex justify-between items-center p-2 bg-gray-800 rounded">
