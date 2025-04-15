@@ -3,13 +3,16 @@ import { useParams, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faArrowLeft, 
+  faCode, 
+  faInfoCircle, 
+  faClock, 
   faBook, 
-  faCode,
   faPlayCircle,
-  faCheckCircle,
   faExclamationTriangle,
-  faInfoCircle,
-  faClock,
+  faCheckCircle,
+  faExternalLinkAlt,
+  faCopy,
+  faPowerOff,
   faPaperPlane,
   faUpload,
   faDownload,
@@ -21,11 +24,7 @@ import {
   faPuzzlePiece,
   faLayerGroup,
   faGlobe,
-  faHdd,
-  faExternalLinkAlt,
-  faCopy,
-  faStopCircle,
-  faPowerOff
+  faHdd
 } from '@fortawesome/free-solid-svg-icons';
 import TerminalFeature from '../components/TerminalPanel';
 import { 
@@ -34,6 +33,7 @@ import {
   getRunningTargetInfo,
   isTargetRunning
 } from '../services/targetService';
+import { targetEnvironments } from '../config/targetEnvironments';
 
 // 知识库数据 - 实际应用中可从API获取
 const knowledgeData = {
@@ -1146,7 +1146,10 @@ function KnowledgeDetail() {
   const [targetEnvStatuses, setTargetEnvStatuses] = useState({});
   const [targetEnvStatus, setTargetEnvStatus] = useState({ loading: false, error: null, url: null });
   const [copyStatus, setCopyStatus] = useState('');
-
+  // 添加flag状态
+  const [flagValues, setFlagValues] = useState({});
+  const [flagStatus, setFlagStatus] = useState({});
+  
   // 处理复制URL到剪贴板
   const handleCopyUrl = (url) => {
     if (url) {
@@ -1320,6 +1323,72 @@ function KnowledgeDetail() {
       checkRunningEnvironments();
     }
   }, [loading, category]);
+
+  // 处理flag验证
+  const handleFlagVerify = (section) => {
+    const sectionTitle = section.title;
+    const submittedFlag = flagValues[sectionTitle] || '';
+    
+    // 获取存储在targetEnvironments中的正确flag
+    const correctFlag = targetEnvironments[categoryId]?.sections?.[sectionTitle]?.flag;
+    
+    if (!correctFlag) {
+      // 该环境没有设置flag
+      setFlagStatus({
+        ...flagStatus,
+        [sectionTitle]: {
+          verified: false,
+          message: '该靶场未设置flag，无需提交',
+          type: 'warning'
+        }
+      });
+      return;
+    }
+    
+    if (submittedFlag.trim() === '') {
+      // 提交的flag为空
+      setFlagStatus({
+        ...flagStatus,
+        [sectionTitle]: {
+          verified: false,
+          message: 'flag不能为空',
+          type: 'error'
+        }
+      });
+      return;
+    }
+    
+    // 验证flag是否正确
+    if (submittedFlag === correctFlag) {
+      // flag正确
+      setFlagStatus({
+        ...flagStatus,
+        [sectionTitle]: {
+          verified: true,
+          message: '恭喜！flag验证成功',
+          type: 'success'
+        }
+      });
+    } else {
+      // flag错误
+      setFlagStatus({
+        ...flagStatus,
+        [sectionTitle]: {
+          verified: false,
+          message: 'flag验证失败，请检查后重试',
+          type: 'error'
+        }
+      });
+    }
+  };
+  
+  // 处理flag输入变化
+  const handleFlagChange = (sectionTitle, value) => {
+    setFlagValues({
+      ...flagValues,
+      [sectionTitle]: value
+    });
+  };
 
   // 如果正在加载
   if (loading) {
@@ -1553,7 +1622,42 @@ function KnowledgeDetail() {
                     </div>
                   </div>
                   
-                  <div className="mt-2 flex space-x-2">
+                  {/* Flag验证界面 */}
+                  <div className="mt-4 border-t border-gray-700 pt-3">
+                    <div className="text-sm text-gray-300 mb-2 font-medium">提交flag:</div>
+                    <div className="flex">
+                      <input
+                        type="text"
+                        className="flex-1 bg-[#333] border border-gray-600 rounded-l px-3 py-1 text-sm focus:outline-none focus:border-primary"
+                        placeholder="输入获取到的flag"
+                        value={flagValues[section.title] || ''}
+                        onChange={(e) => handleFlagChange(section.title, e.target.value)}
+                      />
+                      <button
+                        className="bg-primary hover:bg-primary/90 text-white rounded-r px-3 py-1 text-sm"
+                        onClick={() => handleFlagVerify(section)}
+                      >
+                        验证
+                      </button>
+                    </div>
+                    {flagStatus[section.title] && (
+                      <div className={`mt-2 text-sm ${
+                        flagStatus[section.title].type === 'success' ? 'text-green-400' :
+                        flagStatus[section.title].type === 'error' ? 'text-red-400' : 'text-yellow-400'
+                      }`}>
+                        <FontAwesomeIcon 
+                          icon={
+                            flagStatus[section.title].type === 'success' ? faCheckCircle :
+                            flagStatus[section.title].type === 'error' ? faExclamationTriangle : faInfoCircle
+                          } 
+                          className="mr-1" 
+                        />
+                        {flagStatus[section.title].message}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="mt-4 flex space-x-2">
                     <a href={targetEnvStatuses[section.title].url || (targetEnvStatuses[section.title].accessUrls && targetEnvStatuses[section.title].accessUrls.public)} target="_blank" rel="noopener noreferrer" className="bg-primary hover:bg-primary/90 text-white px-3 py-1 rounded text-xs flex items-center">
                       <FontAwesomeIcon icon={faExternalLinkAlt} className="mr-1" />
                       打开环境

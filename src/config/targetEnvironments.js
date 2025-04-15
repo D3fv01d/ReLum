@@ -78,21 +78,24 @@ const targetEnvironments = {
         port: null,
         internalPort: 5000,
         description: '反射型XSS实验环境，练习通过URL参数等触发的XSS',
-        defaultInstall: true
+        defaultInstall: true,
+        flag: 'flag{xss_reflect_success}'
       },
       '存储型跨站脚本': {
         dockerImage: 'dogls/xss-storage:latest',
         port: null,
         internalPort: 5000,
         description: '存储型XSS实验环境，练习持久化存储的XSS攻击',
-        defaultInstall: true
+        defaultInstall: true,
+        flag: 'flag{xss_storage_success}'
       },
       'DOM型跨站脚本': {
         dockerImage: 'dogls/xss-dom:latest',
         port: null,
         internalPort: 5000,
         description: 'DOM型XSS实验环境，练习客户端JavaScript引起的XSS',
-        defaultInstall: false
+        defaultInstall: false,
+        flag: 'flag{xss_dom_success}'
       },
       '利用XSS平台获取Cookie': {
         dockerImage: 'dogls/xss-demo:1.0',
@@ -114,21 +117,24 @@ const targetEnvironments = {
         port: null,
         internalPort: 5000,
         description: 'GET型CSRF实验环境，利用简单请求构造攻击',
-        defaultInstall: true
+        defaultInstall: true,
+        flag: 'flag{csrf_get_success}'
       },
       'POST型CSRF': {
         dockerImage: 'dogls/csrf-post:latest',
         port: null,
         internalPort: 5000,
         description: 'POST型CSRF实验环境，利用表单提交构造攻击',
-        defaultInstall: true
+        defaultInstall: true,
+        flag: 'flag{csrf_post_success}'
       },
       'CSRF Token窃取': {
         dockerImage: 'dogls/csrf-token:latest',
         port: null,
         internalPort: 5000,
         description: 'CSRF Token窃取实验环境，练习绕过Token防护的攻击方法',
-        defaultInstall: false
+        defaultInstall: false,
+        flag: 'flag{csrf_token_success}'
       }
     }
   },
@@ -208,21 +214,24 @@ const targetEnvironments = {
         port: null,
         internalPort: 80,
         description: 'PHP命令执行漏洞实验环境',
-        defaultInstall: true
+        defaultInstall: true,
+        flag: 'flag{php_command_exec_success}'
       },
       'Java命令执行': {
         dockerImage: 'dogls/java-exec:latest',
         port: null,
         internalPort: 8080,
         description: 'Java命令执行漏洞实验环境',
-        defaultInstall: true
+        defaultInstall: true,
+        flag: 'flag{java_command_exec_success}'
       },
       'Python模板注入': {
         dockerImage: 'dogls/python-ssti:latest',
         port: null,
         internalPort: 5000,
         description: 'Python模板注入命令执行实验环境',
-        defaultInstall: false
+        defaultInstall: false,
+        flag: 'flag{python_ssti_success}'
       },
       '反弹shell': {
         dockerImage: 'relum/command-exec-revshell:latest',
@@ -280,14 +289,16 @@ const targetEnvironments = {
         port: null,
         internalPort: 5000,
         description: '有回显的XXE漏洞实验环境',
-        defaultInstall: true
+        defaultInstall: true,
+        flag: 'flag{xxe_withecho_success}'
       },
       '无回显的XXE': {
         dockerImage: 'dogls/xxe-withoutecho:latest',
         port: null,
         internalPort: 5000,
         description: '无回显的XXE漏洞实验环境，练习带外数据通道技术',
-        defaultInstall: false
+        defaultInstall: false,
+        flag: 'flag{xxe_withoutecho_success}'
       }
     }
   },
