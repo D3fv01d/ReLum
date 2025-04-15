@@ -1467,6 +1467,21 @@ function KnowledgeDetail() {
                 </div>
               )}
               
+              {/* 添加对单个代码块的渲染 */}
+              {section.code && (
+                <div>
+                  <h3 className="text-lg font-medium mb-3 flex items-center">
+                    <FontAwesomeIcon icon={faCode} className="text-primary mr-2" />
+                    示例代码
+                  </h3>
+                  <div className="bg-[#1E1E1E] rounded-lg p-4 mb-4">
+                    <pre className="text-gray-300 overflow-x-auto font-mono">
+                      <code className="text-primary whitespace-pre-wrap">{section.code}</code>
+                    </pre>
+                  </div>
+                </div>
+              )}
+              
               <div className="flex justify-between items-center mt-4">
                 <span className="text-gray-500 text-sm flex items-center">
                   <FontAwesomeIcon icon={faClock} className="mr-1" />
