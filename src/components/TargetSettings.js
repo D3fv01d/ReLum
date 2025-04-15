@@ -14,7 +14,7 @@ import {
   installDefaultTargets, 
   getInstalledImages 
 } from '../services/targetService';
-import targetEnvironments from '../config/targetEnvironments';
+import { targetEnvironments } from '../config/targetEnvironments';
 
 const TargetSettings = () => {
   const [loading, setLoading] = useState(false);
