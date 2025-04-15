@@ -311,6 +311,7 @@ const TargetSettings = () => {
                 <table className="min-w-full divide-y divide-gray-600">
                   <thead className="bg-gray-800">
                     <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">题目名称</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">镜像名称</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">状态</th>
                     </tr>
@@ -322,9 +323,22 @@ const TargetSettings = () => {
                         ? image 
                         : (image.fullName || `${image.repository || '未知'}:${image.tag || 'latest'}`);
                       
+                      // 查找对应的题目名称
+                      let exerciseName = "未知题目";
+                      // 遍历所有靶场类别和题目，找到使用该镜像的题目
+                      Object.keys(targetEnvironments).forEach(category => {
+                        const sections = targetEnvironments[category].sections || {};
+                        Object.keys(sections).forEach(sectionName => {
+                          if (sections[sectionName].dockerImage === imageName) {
+                            exerciseName = `${sectionName} (${category})`;
+                          }
+                        });
+                      });
+                      
                       return (
                         <tr key={index} className={index % 2 === 0 ? 'bg-gray-700' : 'bg-gray-750'}>
-                          <td className="px-4 py-3 text-sm text-white">{imageName}</td>
+                          <td className="px-4 py-3 text-sm text-white">{exerciseName}</td>
+                          <td className="px-4 py-3 text-sm text-gray-400">{imageName}</td>
                           <td className="px-4 py-3 text-sm">
                             <span className="px-2 py-1 text-xs rounded-full bg-green-900 text-green-300">
                               已安装
