@@ -77,29 +77,60 @@ const TargetSettings = () => {
     try {
       const result = await getInstalledImages();
       if (result.images) {
-        // 确保每个镜像对象都有必需的属性
-        const processedImages = Array.isArray(result.images) ? result.images.map(image => {
-          // 如果image只是一个字符串，将其转换为对象格式
-          if (typeof image === 'string') {
+        // 确保每个镜像对象都有必需的属性，并过滤掉<none>:<none>这种无意义的镜像
+        const processedImages = Array.isArray(result.images) ? result.images
+          .filter(image => {
+            // 过滤掉<none>:<none>镜像
+            if (typeof image === 'string') {
+              return !image.includes('<none>:<none>') && !image.includes('none:none');
+            } else {
+              return !(
+                (image.repository === '<none>' || image.repository === 'none') && 
+                (image.tag === '<none>' || image.tag === 'none')
+              );
+            }
+          })
+          .map(image => {
+            // 如果image只是一个字符串，将其转换为对象格式
+            if (typeof image === 'string') {
+              return {
+                fullName: image,
+                repository: image.split(':')[0] || image,
+                tag: image.split(':')[1] || 'latest',
+                id: image,
+                size: '未知',
+                createdSince: '未知',
+                // 添加一个标题字段，后续会从targetEnvironments中寻找匹配的题目名称
+                title: ''
+              };
+            }
+            // 如果image是对象但缺少某些属性，则补全
             return {
-              fullName: image,
-              repository: image.split(':')[0] || image,
-              tag: image.split(':')[1] || 'latest',
-              id: image,
-              size: '未知',
-              createdSince: '未知'
+              repository: image.repository || image.name || '未知',
+              tag: image.tag || 'latest',
+              fullName: image.fullName || `${image.repository || image.name || '未知'}:${image.tag || 'latest'}`,
+              id: image.id || image.fullName || image,
+              size: image.size || '未知',
+              createdSince: image.createdSince || '未知',
+              title: ''
             };
-          }
-          // 如果image是对象但缺少某些属性，则补全
-          return {
-            repository: image.repository || image.name || '未知',
-            tag: image.tag || 'latest',
-            fullName: image.fullName || `${image.repository || image.name || '未知'}:${image.tag || 'latest'}`,
-            id: image.id || image.fullName || image,
-            size: image.size || '未知',
-            createdSince: image.createdSince || '未知'
-          };
-        }) : [];
+          }) : [];
+        
+        // 为每个镜像查找匹配的题目名称
+        processedImages.forEach(image => {
+          // 遍历所有靶场环境配置，查找匹配的题目
+          Object.keys(targetEnvironments).forEach(category => {
+            const sections = targetEnvironments[category].sections || {};
+            Object.keys(sections).forEach(sectionName => {
+              const target = sections[sectionName];
+              if (target.dockerImage === image.fullName) {
+                image.title = sectionName;
+                image.category = category.replace(/-/g, ' ');
+              }
+            });
+          });
+        });
+        
         setInstalledImages(processedImages);
       } else {
         setInstalledImages([]);
@@ -337,14 +368,18 @@ const TargetSettings = () => {
                 <table className="min-w-full divide-y divide-gray-600">
                   <thead className="bg-gray-800">
                     <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">题目名称</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">镜像名称</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">分类</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">状态</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-600">
                     {installedImages.map((image, index) => (
                       <tr key={index} className={index % 2 === 0 ? 'bg-gray-700' : 'bg-gray-750'}>
-                        <td className="px-4 py-3 text-sm text-white">{typeof image === 'string' ? image : image.fullName}</td>
+                        <td className="px-4 py-3 text-sm text-white">{image.title || '未知题目'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-300">{typeof image === 'string' ? image : image.fullName}</td>
+                        <td className="px-4 py-3 text-sm text-gray-300">{image.category || '未分类'}</td>
                         <td className="px-4 py-3 text-sm">
                           <span className="px-2 py-1 text-xs rounded-full bg-green-900 text-green-300">
                             已安装

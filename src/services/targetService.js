@@ -381,30 +381,45 @@ const getInstalledImages = async () => {
       // 确保images数组存在且格式化每个镜像对象
       if (result.images) {
         // 处理镜像数据，确保每个镜像都有必需的属性
-        result.images = Array.isArray(result.images) ? result.images.map(image => {
-          // 如果image只是一个字符串，转换为对象
-          if (typeof image === 'string') {
-            const [repository, tag = 'latest'] = image.split(':');
-            return {
-              fullName: image,
-              repository: repository,
-              tag: tag,
-              id: image,
-              size: '未知',
-              createdSince: '未知'
-            };
-          }
+        result.images = Array.isArray(result.images) ? result.images
+          // 过滤掉<none>:<none>这种无意义的镜像
+          .filter(image => {
+            if (typeof image === 'string') {
+              return !image.includes('<none>:<none>') && !image.includes('none:none');
+            } else if (image) {
+              const repo = image.repository || image.name || image.Image;
+              const tag = image.tag || image.Tag;
+              return !(
+                (repo === '<none>' || repo === 'none') && 
+                (tag === '<none>' || tag === 'none')
+              );
+            }
+            return true;
+          })
+          .map(image => {
+            // 如果image只是一个字符串，转换为对象
+            if (typeof image === 'string') {
+              const [repository, tag = 'latest'] = image.split(':');
+              return {
+                fullName: image,
+                repository: repository,
+                tag: tag,
+                id: image,
+                size: '未知',
+                createdSince: '未知'
+              };
+            }
           
-          // 确保对象包含所有必需的属性
-          return {
-            repository: image.repository || image.name || image.Image || '未知',
-            tag: image.tag || image.Tag || 'latest',
-            fullName: image.fullName || image.FullName || `${image.repository || image.name || image.Image || '未知'}:${image.tag || image.Tag || 'latest'}`,
-            id: image.id || image.ID || image.Id || image.fullName || `${image.repository || '未知'}-${Date.now()}`,
-            size: image.size || image.Size || '未知',
-            createdSince: image.createdSince || image.CreatedSince || '未知'
-          };
-        }) : [];
+            // 确保对象包含所有必需的属性
+            return {
+              repository: image.repository || image.name || image.Image || '未知',
+              tag: image.tag || image.Tag || 'latest',
+              fullName: image.fullName || image.FullName || `${image.repository || image.name || image.Image || '未知'}:${image.tag || image.Tag || 'latest'}`,
+              id: image.id || image.ID || image.Id || image.fullName || `${image.repository || '未知'}-${Date.now()}`,
+              size: image.size || image.Size || '未知',
+              createdSince: image.createdSince || image.CreatedSince || '未知'
+            };
+          }) : [];
       } else {
         result.images = [];
       }
