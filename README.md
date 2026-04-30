@@ -6,6 +6,13 @@
 
 ReLum是一个专业的网络安全学习和实践平台，提供全面的漏洞实验环境和学习资源。
 
+## 👥 项目协作
+
+本项目为协作开发，主要参与者：
+
+- **[@NullAura](https://github.com/NullAura)** — 主要开发者（[相关工作 NullAura/ReLum](https://github.com/NullAura/ReLum)）
+- **[@lsdogXG (AsuTroyes)](https://github.com/lsdogXG)** — 共创者
+
 ## 功能特点
 
 - 直观的用户界面，为用户提供良好的学习体验
