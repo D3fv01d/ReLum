@@ -1,35 +1,7 @@
 /**
  * AI 服务 - 处理与DeepSeek API的通信
  */
-import deepseekConfig from '../config/ai';
-import { buildSafeAiConfig, loadSavedAiConfig } from './aiConfigStorage';
-
-const getActiveConfig = (configOverride = null) => {
-  const savedConfig = loadSavedAiConfig(deepseekConfig);
-  const mergedConfig = savedConfig
-    ? {
-        ...deepseekConfig,
-        ...savedConfig,
-        parameters: {
-          ...deepseekConfig.parameters,
-          ...savedConfig.parameters,
-        },
-      }
-    : deepseekConfig;
-
-  if (!configOverride) {
-    return mergedConfig;
-  }
-
-  return buildSafeAiConfig({
-    ...mergedConfig,
-    ...configOverride,
-    parameters: {
-      ...mergedConfig.parameters,
-      ...configOverride.parameters,
-    },
-  }, mergedConfig);
-};
+import { getActiveAiConfig } from './aiConfigService';
 
 class AIService {
   /**
@@ -38,7 +10,7 @@ class AIService {
    * @returns {Promise} - 返回API响应的Promise
    */
   async sendMessage(messages, configOverride = null) {
-    const activeConfig = getActiveConfig(configOverride);
+    const activeConfig = getActiveAiConfig(configOverride);
 
     // 检查API密钥是否已配置
     if (!activeConfig.apiKey) {

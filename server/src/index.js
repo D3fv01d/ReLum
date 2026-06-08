@@ -189,8 +189,7 @@ app.delete('/api/target/image/:id', async (req, res) => {
 
 app.post('/api/target/install-defaults', async (req, res) => {
   try {
-    // 从请求中引入环境配置
-    const { targetEnvironments } = require('../../src/config/targetEnvironments');
+    const { targetEnvironments } = require('../../src/shared/targetEnvironments');
     const result = await dockerService.installDefaultTargets(targetEnvironments);
     res.status(200).json(result);
   } catch (error) {

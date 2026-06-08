@@ -1,5 +1,4 @@
 const { spawn } = require('child_process');
-const path = require('path');
 const fs = require('fs');
 const os = require('os');
 const logger = require('../utils/logger');
@@ -7,30 +6,17 @@ const {
   buildRunArgs,
   runDockerCommand,
 } = require('./dockerCommand');
-
-// Docker镜像存储位置
-const getStoragePath = () => {
-  const platform = os.platform();
-
-  if (platform === 'linux') {
-    return '/opt/relum/targets';
-  } else if (platform === 'darwin') {
-    return path.join(os.homedir(), 'Library/Application Support/ReLum/targets');
-  } else if (platform === 'win32') {
-    return 'C:\\ProgramData\\ReLum\\targets';
-  } else {
-    return path.join(os.homedir(), '.relum/targets');
-  }
-};
-
-// 确保存储目录存在
-const ensureStorageDir = () => {
-  const storagePath = getStoragePath();
-  if (!fs.existsSync(storagePath)) {
-    fs.mkdirSync(storagePath, { recursive: true });
-  }
-  return storagePath;
-};
+const {
+  getLocalIpAddress,
+  getLocalNetworkIp,
+} = require('./networkAddress');
+const {
+  allocateTargetPort,
+  findAvailablePort,
+} = require('./portAllocator');
+const {
+  ensureStorageDir,
+} = require('./targetStorage');
 
 // 检查Docker是否已安装
 const checkDockerInstalled = async () => {
@@ -237,211 +223,6 @@ const getContainerInfo = async (containerName) => {
   }
 };
 
-// 配置靶场环境暴露端口
-const findAvailablePort = (startPort = 10000, endPort = 65000) => {
-  return new Promise((resolve, reject) => {
-    // 预定义一些备用端口，当随机检测失败时使用
-    const backupPorts = [
-      8080, 8081, 8082, 8083, 8084, 8085, 8086, 8087, 8088, 8089,  // 常用Web端口
-      9000, 9001, 9002, 9003, 9004, 9005, 9006, 9007, 9008, 9009,  // 常用Web端口
-      3000, 3001, 3002, 3003, 3004, 3005, 3006, 3007, 3008, 3009,  // 常用开发端口
-      5000, 5001, 5002, 5003, 5004, 5005, 5006, 5007, 5008, 5009,  // 常用应用端口
-      7000, 7001, 7002, 7003, 7004, 7005, 7006, 7007, 7008, 7009   // 常用应用端口
-    ];
-
-    // 使用备选端口列表的标志
-    const useBackupPort = startPort > 40000; // 如果已经尝试了较高范围的端口，就使用备选表
-
-    if (useBackupPort) {
-      // 随机选择一个备用端口
-      const randomIndex = Math.floor(Math.random() * backupPorts.length);
-      const backupPort = backupPorts[randomIndex];
-      logger.info(`使用备选端口列表，尝试端口: ${backupPort}`);
-
-      // 使用简化的检测方法
-      const net = require('net');
-      const server = net.createServer();
-
-      server.once('error', (err) => {
-        server.close();
-        // 如果端口被占用，尝试下一个备选端口
-        if (err.code === 'EADDRINUSE') {
-          logger.warn(`备选端口 ${backupPort} 已被占用，尝试下一个`);
-          findAvailablePort(50000, endPort)  // 确保继续使用备选模式
-            .then(port => resolve(port))
-            .catch(err => reject(err));
-        } else {
-          reject(err);
-        }
-      });
-
-      server.once('listening', () => {
-        const port = server.address().port;
-        server.close();
-        logger.info(`找到可用的备选端口: ${port}`);
-        resolve(port);
-      });
-
-      server.listen(backupPort);
-      return;
-    }
-
-    // 直接使用操作系统分配的动态端口 - 最可靠的方法
-    if (startPort === 10000) { // 只在首次调用时使用动态端口
-      const net = require('net');
-      const server = net.createServer();
-
-      server.once('error', (err) => {
-        server.close();
-        logger.error(`创建测试服务器失败: ${err.message}`);
-        // 如果动态端口失败，尝试随机端口
-        startPort = Math.floor(Math.random() * 20000) + 20000;
-        logger.info(`动态端口分配失败，随机选择起始端口: ${startPort}`);
-        findAvailablePort(startPort, endPort)
-          .then(port => resolve(port))
-          .catch(err => reject(err));
-      });
-
-      server.once('listening', () => {
-        const port = server.address().port;
-        server.close();
-        logger.info(`系统分配动态端口成功: ${port}`);
-        resolve(port);
-      });
-
-      // 端口设为0让操作系统自动分配
-      server.listen(0);
-      return;
-    }
-
-    // 随机选择一个端口
-    const port = Math.floor(Math.random() * (endPort - startPort)) + startPort;
-    logger.info(`随机选择端口: ${port}`);
-
-    // 使用简单的socket测试
-    const net = require('net');
-    const server = net.createServer();
-
-    server.once('error', (err) => {
-      server.close();
-
-      // 如果端口被占用，递归尝试
-      if (err.code === 'EADDRINUSE') {
-        logger.warn(`端口 ${port} 已被占用，尝试另一个端口`);
-        // 增大步长
-        const nextStartPort = port + 1000;
-
-        // 如果已经尝试了较高的端口范围，切换到备选端口模式
-        if (nextStartPort > 40000) {
-          logger.warn(`常规端口分配失败，切换到备选端口模式`);
-          findAvailablePort(50000, endPort)  // 50000以上表示使用备选列表
-            .then(port => resolve(port))
-            .catch(err => reject(err));
-        } else {
-          findAvailablePort(nextStartPort, endPort)
-            .then(port => resolve(port))
-            .catch(err => reject(err));
-        }
-      } else {
-        logger.error(`端口检测错误: ${err.message}`);
-        reject(err);
-      }
-    });
-
-    server.once('listening', () => {
-      const assignedPort = server.address().port;
-      server.close();
-      logger.info(`找到可用端口: ${assignedPort}`);
-      resolve(assignedPort);
-    });
-
-    server.listen(port);
-  });
-};
-
-// 获取本机IP地址
-const getLocalIpAddress = async () => {
-  try {
-    // 尝试使用公网IP服务获取公网IP
-    const publicIpPromise = new Promise((resolve) => {
-      const https = require('https');
-      const options = {
-        hostname: 'api.ipify.org',
-        port: 443,
-        path: '/',
-        method: 'GET'
-      };
-
-      const req = https.request(options, res => {
-        let data = '';
-        res.on('data', chunk => {
-          data += chunk;
-        });
-        res.on('end', () => {
-          if (res.statusCode === 200) {
-            logger.info(`获取到公网IP: ${data}`);
-            resolve(data.trim());
-          } else {
-            logger.warn(`获取公网IP失败，状态码: ${res.statusCode}`);
-            resolve(null);
-          }
-        });
-      });
-
-      req.on('error', (error) => {
-        logger.warn(`获取公网IP出错: ${error.message}`);
-        resolve(null);
-      });
-
-      // 设置超时
-      req.setTimeout(3000, () => {
-        logger.warn('获取公网IP超时');
-        req.destroy();
-        resolve(null);
-      });
-
-      req.end();
-    });
-
-    // 使用Promise.race设置整体超时
-    return Promise.race([
-      publicIpPromise,
-      new Promise((resolve) => {
-        setTimeout(() => {
-          logger.warn('获取公网IP总体超时，回退到本地IP');
-          resolve(null);
-        }, 5000);
-      })
-    ]).then(publicIp => {
-      if (publicIp) {
-        return publicIp;
-      }
-
-      // 如果获取公网IP失败，回退到本地IP
-      logger.info('使用本地网络接口IP作为备选');
-      const interfaces = os.networkInterfaces();
-      // 尝试从各种网络接口中找到一个非内部的IPv4地址
-      for (const name of Object.keys(interfaces)) {
-        for (const iface of interfaces[name]) {
-          // 跳过内部和非IPv4地址
-          if ('IPv4' !== iface.family || iface.internal !== false) {
-            continue;
-          }
-          // 找到一个可用的外部IPv4地址
-          logger.info(`使用本地IP地址: ${iface.address}`);
-          return iface.address;
-        }
-      }
-      // 如果没有找到，返回localhost
-      logger.info('未找到本地IP地址，使用localhost');
-      return 'localhost';
-    });
-  } catch (error) {
-    logger.error(`获取IP地址时出错: ${error.message}`);
-    return 'localhost';
-  }
-};
-
 // 启动靶场环境
 const startTargetEnvironment = async (target) => {
   try {
@@ -471,116 +252,7 @@ const startTargetEnvironment = async (target) => {
       downloadStatus = '使用已存在的镜像，准备启动容器...';
     }
 
-    // 分配端口
-    let port = target.port;
-
-    // 如果没有指定端口，首先尝试使用系统动态分配
-    if (!port) {
-      try {
-        logger.info(`尝试使用系统动态分配端口...`);
-        const net = require('net');
-        const server = net.createServer();
-
-        // 创建临时服务器让系统分配可用端口
-        await new Promise((resolve, reject) => {
-          server.once('error', (err) => {
-            server.close();
-            logger.error(`创建临时服务器失败: ${err.message}`);
-            resolve(null); // 不抛出错误，会进入下一个分配尝试
-          });
-
-          server.once('listening', () => {
-            port = server.address().port;
-            server.close();
-            logger.info(`系统成功分配动态端口: ${port}`);
-            resolve(port);
-          });
-
-          // 端口设为0让系统自动分配
-          server.listen(0);
-        });
-      } catch (err) {
-        logger.warn(`系统动态分配端口失败: ${err.message}`);
-      }
-    }
-
-    // 如果系统动态分配失败，尝试备选策略
-    if (!port) {
-      let portAssignAttempts = 0;
-      const maxPortAssignAttempts = 3; // 减少尝试次数
-
-      // 尝试从备选端口列表中选择
-      while (!port && portAssignAttempts < maxPortAssignAttempts) {
-        try {
-          logger.info(`尝试从端口列表分配 (尝试 ${portAssignAttempts + 1}/${maxPortAssignAttempts})...`);
-
-          // 使用备选端口列表
-          if (portAssignAttempts === 0) {
-            // 第一次尝试备选端口列表
-            port = await findAvailablePort(50000, 65000);
-          } else if (portAssignAttempts === 1) {
-            // 第二次尝试随机端口
-            const randomPort = Math.floor(Math.random() * 20000) + 20000;
-            port = await findAvailablePort(randomPort, randomPort + 10000);
-          } else {
-            // 最后尝试常用端口
-            port = await findAvailablePort(8000, 9000);
-          }
-
-          logger.info(`端口分配成功: ${port}`);
-          break;
-        } catch (portError) {
-          portAssignAttempts++;
-          logger.warn(`端口分配失败 (尝试 ${portAssignAttempts}/${maxPortAssignAttempts}): ${portError.message}`);
-
-          if (portAssignAttempts >= maxPortAssignAttempts) {
-            // 最后尝试一些硬编码端口
-            const emergencyPorts = [8080, 8081, 9000, 9001, 3000, 3001, 5000, 5001];
-            logger.warn(`尝试紧急备用端口...`);
-
-            for (const emergencyPort of emergencyPorts) {
-              try {
-                const net = require('net');
-                const server = net.createServer();
-                let isAvailable = false;
-
-                await new Promise((resolve) => {
-                  server.once('error', () => {
-                    server.close();
-                    resolve(false);
-                  });
-
-                  server.once('listening', () => {
-                    isAvailable = true;
-                    server.close();
-                    resolve(true);
-                  });
-
-                  server.listen(emergencyPort);
-                });
-
-                if (isAvailable) {
-                  port = emergencyPort;
-                  logger.info(`紧急端口可用: ${port}`);
-                  break;
-                }
-              } catch (e) {
-                logger.debug(`紧急端口 ${emergencyPort} 检测失败: ${e.message}`);
-              }
-            }
-
-            if (!port) {
-              throw new Error(`无法分配可用端口，所有尝试都失败了`);
-            }
-          }
-        }
-      }
-    }
-
-    if (!port) {
-      throw new Error('无法分配可用端口，请尝试手动指定端口或稍后再试');
-    }
-
+    const port = await allocateTargetPort(target.port);
     logger.info(`最终使用端口: ${port}`);
 
     // 生成容器名称
@@ -608,22 +280,8 @@ const startTargetEnvironment = async (target) => {
 
     downloadStatus = '容器启动成功，环境已就绪';
 
-    // 对于本地开发模式，可能需要使用特殊的IP
     const actualPort = result.port || port;
-    const isLocalDev = process.env.NODE_ENV === 'development';
-
-    // 获取本地IP用于局域网访问
-    const interfaces = os.networkInterfaces();
-    let localNetworkIp = 'localhost';
-    for (const name of Object.keys(interfaces)) {
-      for (const iface of interfaces[name]) {
-        if ('IPv4' === iface.family && iface.internal === false) {
-          localNetworkIp = iface.address;
-          break;
-        }
-      }
-      if (localNetworkIp !== 'localhost') break;
-    }
+    const localNetworkIp = getLocalNetworkIp();
 
     return {
       error: false,
@@ -796,5 +454,4 @@ module.exports = {
   getInstalledImages,
   getRunningContainers,
   removeImage,
-  findAvailablePort
 };

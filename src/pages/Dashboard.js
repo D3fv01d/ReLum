@@ -13,7 +13,7 @@ import {
   faExchangeAlt,
   faFileCode
 } from '@fortawesome/free-solid-svg-icons';
-import TerminalFeature from '../components/TerminalPanel';
+import TerminalFeature from '../components/TerminalFeature';
 import { Link } from 'react-router-dom';
 
 const featureCards = [

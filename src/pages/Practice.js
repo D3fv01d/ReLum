@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGraduationCap } from '@fortawesome/free-solid-svg-icons';
-import TerminalFeature from '../components/TerminalPanel';
+import TerminalFeature from '../components/TerminalFeature';
 import PracticeCard from '../components/PracticeCard';
 import comprehensivePractices from '../data/practiceCatalog';
 

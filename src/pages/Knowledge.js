@@ -5,7 +5,7 @@ import {
   faSearch,
   faArrowRight
 } from '@fortawesome/free-solid-svg-icons';
-import TerminalFeature from '../components/TerminalPanel';
+import TerminalFeature from '../components/TerminalFeature';
 import knowledgeCategories from '../data/knowledgeCategories';
 
 function Knowledge() {
