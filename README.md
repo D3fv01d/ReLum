@@ -60,14 +60,54 @@ ReLum是一个专业的网络安全学习和实践平台，提供全面的漏洞
 
 ## 安装和运行
 
-1. 安装：
-### 构建docker镜像
+### 本地开发
+
+1. 安装前端依赖：
+
+```bash
+npm install
+```
+
+2. 安装后端依赖：
+
+```bash
+cd server
+npm install
+cd ..
+```
+
+3. 准备环境变量：
+
+```bash
+cp .env.example .env
+cp server/.env.example server/.env
+```
+
+4. 启动后端服务：
+
+```bash
+cd server
+npm start
+```
+
+5. 在另一个终端启动前端：
+
+```bash
+npm start
+```
+
+### 提交前验证
+
+```bash
+npm run verify
+```
+
+该命令会执行前端生产构建、生产依赖审计、后端语法检查、后端健康检查、请求追踪响应头检查和目标 API 限流响应头检查。
+
+### 构建 Docker 镜像
 
 ```bash
 docker-compose build
-```
-
-
 ```
 
 ## Docker环境使用与更新
