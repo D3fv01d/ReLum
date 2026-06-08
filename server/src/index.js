@@ -25,6 +25,8 @@ logger.info(`服务运行于${isRunningInDocker ? 'Docker' : '本地'}环境`);
 const app = express();
 const PORT = process.env.PORT || 8080;
 const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '1mb';
+const SHELL_COMMAND_MAX_LENGTH = Number.parseInt(process.env.SHELL_COMMAND_MAX_LENGTH, 10) || 2000;
+const SHELL_WS_MAX_PAYLOAD = Number.parseInt(process.env.SHELL_WS_MAX_PAYLOAD, 10) || 8192;
 const allowedOrigins = (process.env.CORS_ORIGIN || '')
   .split(',')
   .map(origin => origin.trim())
@@ -328,7 +330,11 @@ app.use((error, req, res, next) => {
 const server = http.createServer(app);
 
 // 创建WebSocket服务器
-const wss = new WebSocket.Server({ server, path: '/api/shell' });
+const wss = new WebSocket.Server({
+  server,
+  path: '/api/shell',
+  maxPayload: SHELL_WS_MAX_PAYLOAD,
+});
 
 // WebSocket连接处理
 wss.on('connection', (ws, req) => {
@@ -370,24 +376,43 @@ wss.on('connection', (ws, req) => {
     try {
       const data = JSON.parse(message);
 
-      if (data.type === 'command') {
-        const command = data.content.trim();
-        logger.info(`收到命令: ${command}`);
+      if (!data || typeof data !== 'object' || data.type !== 'command' || typeof data.content !== 'string') {
+        ws.send(JSON.stringify({
+          type: 'error',
+          content: '无效的命令消息'
+        }));
+        return;
+      }
 
-        try {
-          // 执行命令并返回结果
-          const result = await shellService.executeCommand(shellSession, command);
+      const command = data.content.trim();
 
-          ws.send(JSON.stringify({
-            type: 'output',
-            content: result
-          }));
-        } catch (error) {
-          ws.send(JSON.stringify({
-            type: 'error',
-            content: `执行错误: ${error.message}`
-          }));
-        }
+      if (!command) {
+        return;
+      }
+
+      if (command.length > SHELL_COMMAND_MAX_LENGTH) {
+        ws.send(JSON.stringify({
+          type: 'error',
+          content: `命令长度不能超过 ${SHELL_COMMAND_MAX_LENGTH} 个字符`
+        }));
+        return;
+      }
+
+      logger.info(`收到Shell命令，长度: ${command.length}`);
+
+      try {
+        // 执行命令并返回结果
+        const result = await shellService.executeCommand(shellSession, command);
+
+        ws.send(JSON.stringify({
+          type: 'output',
+          content: result
+        }));
+      } catch (error) {
+        ws.send(JSON.stringify({
+          type: 'error',
+          content: `执行错误: ${error.message}`
+        }));
       }
     } catch (error) {
       logger.error(`消息处理错误: ${error.message}`);
