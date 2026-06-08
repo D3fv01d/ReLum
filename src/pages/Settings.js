@@ -14,29 +14,8 @@ import {
 import deepseekConfig from '../config/ai';
 import aiService from '../services/aiService';
 import { buildSafeAiConfig, loadSavedAiConfig, persistAiConfig } from '../services/aiConfigStorage';
+import { buildConfigFromForm, buildFormDataFromConfig } from '../services/aiSettingsForm';
 import TargetSettings from '../components/TargetSettings';
-
-const buildConfigFromForm = (formData) => ({
-  apiKey: formData.apiKey.trim(),
-  apiUrl: formData.apiUrl.trim(),
-  model: formData.model.trim(),
-  systemPrompt: formData.systemPrompt,
-  parameters: {
-    temperature: parseFloat(formData.temperature) || 0.7,
-    max_tokens: parseInt(formData.max_tokens, 10) || 1000,
-    top_p: parseFloat(formData.top_p) || 0.95,
-  },
-});
-
-const buildFormDataFromConfig = (config) => ({
-  apiKey: config.apiKey || '',
-  apiUrl: config.apiUrl || '',
-  model: config.model || '',
-  systemPrompt: config.systemPrompt || '',
-  temperature: config.parameters?.temperature?.toString() || '0.7',
-  max_tokens: config.parameters?.max_tokens?.toString() || '1000',
-  top_p: config.parameters?.top_p?.toString() || '0.95',
-});
 
 // 设置页面组件
 function Settings() {
