@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -8,6 +8,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import TerminalFeature from '../components/TerminalFeature';
 import KnowledgeSectionCard from '../components/KnowledgeSectionCard';
+import KnowledgeOutlineNav from '../components/knowledge/KnowledgeOutlineNav';
 import {
   startTargetEnvironment,
   stopTargetEnvironment,
@@ -20,12 +21,19 @@ function KnowledgeDetail() {
   const { categoryId } = useParams(); // 路由参数名是categoryId，而不是id
   const [loading, setLoading] = useState(false);
   const [category, setCategory] = useState(null);
-  const [activeSection, setActiveSection] = useState(null);
+  const [activeSectionId, setActiveSectionId] = useState(null);
   const [targetEnvStatuses, setTargetEnvStatuses] = useState({});
   const [copyStatus, setCopyStatus] = useState('');
   // 添加flag状态
   const [flagValues, setFlagValues] = useState({});
   const [flagStatus, setFlagStatus] = useState({});
+  const sectionIds = useMemo(() => {
+    if (!category?.sections) {
+      return [];
+    }
+
+    return category.sections.map((_, index) => `knowledge-${categoryId}-section-${index + 1}`);
+  }, [category, categoryId]);
 
   // 处理复制URL到剪贴板
   const handleCopyUrl = (url) => {
@@ -43,49 +51,43 @@ function KnowledgeDetail() {
       const result = await stopTargetEnvironment(categoryId, section.title);
 
       if (result.error) {
-        // 复制当前状态
-        const updatedStatuses = { ...targetEnvStatuses };
-        // 更新指定章节的状态
-        updatedStatuses[section.title] = {
-          error: result.message,
-          loading: false,
-          url: null,
-          status: '关闭环境失败'
-        };
-        setTargetEnvStatuses(updatedStatuses);
+        setTargetEnvStatuses(prev => ({
+          ...prev,
+          [section.title]: {
+            error: result.message,
+            loading: false,
+            url: null,
+            status: '关闭环境失败'
+          },
+        }));
       } else {
-        // 删除已关闭环境的状态
-        const updatedStatuses = { ...targetEnvStatuses };
-        delete updatedStatuses[section.title];
-        setTargetEnvStatuses(updatedStatuses);
-
-        // 如果当前活动章节是被关闭的环境，则重置当前状态
-        if (activeSection?.title === section.title) {
-          setActiveSection(null);
-        }
+        setTargetEnvStatuses((prev) => {
+          const updatedStatuses = { ...prev };
+          delete updatedStatuses[section.title];
+          return updatedStatuses;
+        });
       }
     } catch (error) {
       console.error('关闭环境失败:', error);
-      // 更新相应环境的错误状态
-      const updatedStatuses = { ...targetEnvStatuses };
-      updatedStatuses[section.title] = {
-        error: error.message,
-        loading: false,
-        url: null,
-        status: '关闭环境失败'
-      };
-      setTargetEnvStatuses(updatedStatuses);
+      setTargetEnvStatuses(prev => ({
+        ...prev,
+        [section.title]: {
+          error: error.message,
+          loading: false,
+          url: null,
+          status: '关闭环境失败'
+        },
+      }));
     }
   };
 
   // 处理实验按钮点击
   const handleExperimentClick = async (section) => {
-    setActiveSection(section);
-
     // 更新特定章节的状态为加载中
-    const updatedStatuses = { ...targetEnvStatuses };
-    updatedStatuses[section.title] = { loading: true, error: null, url: null, status: '正在准备启动靶场环境...' };
-    setTargetEnvStatuses(updatedStatuses);
+    setTargetEnvStatuses(prev => ({
+      ...prev,
+      [section.title]: { loading: true, error: null, url: null, status: '正在准备启动靶场环境...' },
+    }));
 
     try {
       // 添加调试信息
@@ -98,10 +100,10 @@ function KnowledgeDetail() {
       console.log('靶场环境启动结果:', result);
 
       if (result.error) {
-        // 更新特定章节的错误状态
-        const updatedStatuses = { ...targetEnvStatuses };
-        updatedStatuses[section.title] = { loading: false, error: result.message, url: null };
-        setTargetEnvStatuses(updatedStatuses);
+        setTargetEnvStatuses(prev => ({
+          ...prev,
+          [section.title]: { loading: false, error: result.message, url: null },
+        }));
       } else {
         // 成功启动环境
         const envStatus = {
@@ -115,10 +117,10 @@ function KnowledgeDetail() {
           status: result.status || '靶场环境已成功启动'
         };
 
-        // 更新特定章节的成功状态
-        const updatedStatuses = { ...targetEnvStatuses };
-        updatedStatuses[section.title] = envStatus;
-        setTargetEnvStatuses(updatedStatuses);
+        setTargetEnvStatuses(prev => ({
+          ...prev,
+          [section.title]: envStatus,
+        }));
 
         // 可以选择自动在新窗口打开环境
         if (result.url && result.status !== '使用已运行的靶场环境') {
@@ -128,10 +130,10 @@ function KnowledgeDetail() {
     } catch (error) {
       console.error('启动环境失败:', error);
 
-      // 更新特定章节的错误状态
-      const updatedStatuses = { ...targetEnvStatuses };
-      updatedStatuses[section.title] = { loading: false, error: error.message, url: null };
-      setTargetEnvStatuses(updatedStatuses);
+      setTargetEnvStatuses(prev => ({
+        ...prev,
+        [section.title]: { loading: false, error: error.message, url: null },
+      }));
     }
   };
 
@@ -140,7 +142,6 @@ function KnowledgeDetail() {
     if (!category || !category.sections) return;
 
     const updatedStatuses = {};
-    let nextActiveSection = null;
 
     // 遍历所有章节，查找运行中的环境
     for (const section of category.sections) {
@@ -159,16 +160,7 @@ function KnowledgeDetail() {
         };
 
         updatedStatuses[section.title] = envStatus;
-
-        // 设置第一个找到的环境为活动环境
-        if (!nextActiveSection) {
-          nextActiveSection = section;
-        }
       }
-    }
-
-    if (nextActiveSection) {
-      setActiveSection(nextActiveSection);
     }
 
     setTargetEnvStatuses(prev => ({
@@ -183,12 +175,51 @@ function KnowledgeDetail() {
     // 模拟API请求
     setTimeout(() => {
       // 检查知识库中是否有对应categoryId的数据
-      if (knowledgeData[categoryId]) {
-        setCategory(knowledgeData[categoryId]);
-      }
+      setCategory(knowledgeData[categoryId] || null);
       setLoading(false);
     }, 300);
   }, [categoryId]);
+
+  useEffect(() => {
+    if (sectionIds.length === 0) {
+      return;
+    }
+
+    const hashId = window.location.hash.replace('#', '');
+    setActiveSectionId(sectionIds.includes(hashId) ? hashId : sectionIds[0]);
+  }, [sectionIds]);
+
+  useEffect(() => {
+    if (
+      sectionIds.length === 0 ||
+      typeof window === 'undefined' ||
+      !('IntersectionObserver' in window)
+    ) {
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      const visibleEntry = entries
+        .filter(entry => entry.isIntersecting)
+        .sort((first, second) => second.intersectionRatio - first.intersectionRatio)[0];
+
+      if (visibleEntry) {
+        setActiveSectionId(visibleEntry.target.id);
+      }
+    }, {
+      rootMargin: '-120px 0px -55% 0px',
+      threshold: [0.1, 0.25, 0.5],
+    });
+
+    sectionIds.forEach((sectionId) => {
+      const element = document.getElementById(sectionId);
+      if (element) {
+        observer.observe(element);
+      }
+    });
+
+    return () => observer.disconnect();
+  }, [sectionIds]);
 
   // 页面加载后检查运行中的环境
   useEffect(() => {
@@ -216,6 +247,21 @@ function KnowledgeDetail() {
       [sectionTitle]: value
     });
   };
+
+  const handleSectionSelect = useCallback((sectionId) => {
+    const element = document.getElementById(sectionId);
+
+    if (!element) {
+      return;
+    }
+
+    setActiveSectionId(sectionId);
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    if (window.history?.replaceState) {
+      window.history.replaceState(null, '', `${window.location.pathname}#${sectionId}`);
+    }
+  }, []);
 
   // 如果正在加载
   if (loading) {
@@ -252,36 +298,44 @@ function KnowledgeDetail() {
   return (
     <main className="max-w-7xl mx-auto px-4 py-8 relative">
       <TerminalFeature />
-      <div className="bg-[#222222] rounded-lg p-6">
-        <Link to="/knowledge" className="text-primary hover:text-primary/90 mb-6 inline-flex items-center">
-          <FontAwesomeIcon icon={faArrowLeft} className="mr-2" />
-          返回知识库
-        </Link>
+      <Link to="/knowledge" className="text-primary hover:text-primary/90 mb-6 inline-flex items-center">
+        <FontAwesomeIcon icon={faArrowLeft} className="mr-2" />
+        返回知识库
+      </Link>
 
-        <div className="mb-8">
-          <div className="flex items-center mb-4">
-            <div className="bg-primary/20 p-3 rounded-lg mr-4">
-              <FontAwesomeIcon icon={category.icon} className="text-primary text-2xl" />
-            </div>
-            <h1 className="text-3xl font-bold">{category.title}</h1>
+      <header className="mb-6">
+        <div className="flex items-center mb-4">
+          <div className="bg-primary/20 p-3 rounded-lg mr-4">
+            <FontAwesomeIcon icon={category.icon} className="text-primary text-2xl" />
           </div>
-
-          <p className="text-gray-300 mb-6">{category.description}</p>
-
-          <div className="bg-[#2A2A2A] rounded-lg p-4 mb-8">
-            <h2 className="text-xl font-semibold mb-4 flex items-center">
-              <FontAwesomeIcon icon={faInfoCircle} className="text-primary mr-2" />
-              防护措施
-            </h2>
-            <ul className="space-y-2 ml-6 list-disc text-gray-300">
-              {category.protection.map((item, index) => (
-                <li key={index}>{item}</li>
-              ))}
-            </ul>
-          </div>
+          <h1 className="text-3xl font-bold">{category.title}</h1>
         </div>
 
-        <div className="space-y-8">
+        <p className="text-gray-300">{category.description}</p>
+      </header>
+
+      <section className="mb-6 rounded-lg bg-[#222222] p-5">
+        <h2 className="text-xl font-semibold mb-4 flex items-center">
+          <FontAwesomeIcon icon={faInfoCircle} className="text-primary mr-2" />
+          防护措施
+        </h2>
+        <ul className="space-y-2 ml-6 list-disc text-gray-300">
+          {category.protection.map((item, index) => (
+            <li key={index}>{item}</li>
+          ))}
+        </ul>
+      </section>
+
+      <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
+        <KnowledgeOutlineNav
+          activeSectionId={activeSectionId}
+          onSectionSelect={handleSectionSelect}
+          sectionIds={sectionIds}
+          sections={category.sections}
+          targetEnvStatuses={targetEnvStatuses}
+        />
+
+        <div className="space-y-6">
           {category.sections.map((section, index) => (
             <KnowledgeSectionCard
               key={section.title}
@@ -297,6 +351,7 @@ function KnowledgeDetail() {
               onFlagVerify={handleFlagVerify}
               onStopEnvironment={handleStopEnvironment}
               section={section}
+              sectionId={sectionIds[index]}
               targetEnvStatus={targetEnvStatuses[section.title]}
             />
           ))}

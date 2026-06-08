@@ -60,16 +60,22 @@ const KnowledgeSectionCard = ({
   onFlagVerify,
   onStopEnvironment,
   section,
+  sectionId,
   targetEnvStatus,
 }) => {
   const status = targetEnvStatus || {};
   const publicUrl = status.accessUrls?.public || status.url;
   const localUrl = status.localUrl || status.accessUrls?.localhost;
+  const titleId = sectionId ? `${sectionId}-title` : undefined;
 
   return (
-    <div className="bg-[#2A2A2A] rounded-lg p-6">
+    <section
+      id={sectionId}
+      aria-labelledby={titleId}
+      className="scroll-mt-24 rounded-lg bg-[#2A2A2A] p-6"
+    >
       <div className="flex justify-between items-start mb-4">
-        <h2 className="text-xl font-semibold">{section.title}</h2>
+        <h2 id={titleId} className="text-xl font-semibold">{section.title}</h2>
         <span className={`px-3 py-1 rounded-full text-sm ${difficultyClassName[section.difficulty] || difficultyClassName.expert}`}>
           {difficultyLabel[section.difficulty] || difficultyLabel.expert}
         </span>
@@ -279,7 +285,7 @@ const KnowledgeSectionCard = ({
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 };
 
