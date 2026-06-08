@@ -5,7 +5,9 @@ import {
   faServer,
   faExclamationTriangle,
   faCheckCircle,
-  faSync
+  faSync,
+  faSearch,
+  faTimes
 } from '@fortawesome/free-solid-svg-icons';
 import {
   checkDockerInstalled,
@@ -22,6 +24,7 @@ const TargetSettings = () => {
   const [installedImages, setInstalledImages] = useState([]);
   const [installResult, setInstallResult] = useState(null);
   const [activeTab, setActiveTab] = useState('status');
+  const [environmentQuery, setEnvironmentQuery] = useState('');
 
   // 计算统计信息
   const stats = useMemo(() => {
@@ -50,6 +53,44 @@ const TargetSettings = () => {
       installPercent: totalEnvironments ? Math.round((installedCount / totalEnvironments) * 100) : 0
     };
   }, [installedImages.length]);
+
+  const availableEnvironmentGroups = useMemo(() => {
+    const query = environmentQuery.trim().toLowerCase();
+
+    return Object.keys(targetEnvironments)
+      .map(category => {
+        const sections = targetEnvironments[category].sections || {};
+        const matchingSections = Object.keys(sections)
+          .filter(sectionName => {
+            if (!query) {
+              return true;
+            }
+
+            const target = sections[sectionName];
+            return [
+              category,
+              sectionName,
+              target.description,
+              target.dockerImage,
+            ].some(value => value?.toLowerCase().includes(query));
+          })
+          .map(sectionName => ({
+            sectionName,
+            target: sections[sectionName],
+          }));
+
+        return {
+          category,
+          sections: matchingSections,
+        };
+      })
+      .filter(group => group.sections.length > 0);
+  }, [environmentQuery]);
+
+  const filteredEnvironmentCount = useMemo(
+    () => availableEnvironmentGroups.reduce((sum, group) => sum + group.sections.length, 0),
+    [availableEnvironmentGroups]
+  );
 
   // 检查Docker安装状态
   const checkDocker = useCallback(async () => {
@@ -357,17 +398,55 @@ const TargetSettings = () => {
           </div>
 
           <div>
-            <div className="text-white mb-2">可用靶场环境</div>
+            <div className="mb-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="text-white">可用靶场环境</div>
+                <div className="text-xs text-gray-400">
+                  共 {filteredEnvironmentCount} 个匹配环境
+                </div>
+              </div>
+              <div className="relative md:w-80">
+                <label htmlFor="target-environment-search" className="sr-only">
+                  搜索靶场环境
+                </label>
+                <FontAwesomeIcon
+                  icon={faSearch}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+                  aria-hidden="true"
+                />
+                <input
+                  id="target-environment-search"
+                  type="search"
+                  value={environmentQuery}
+                  onChange={(event) => setEnvironmentQuery(event.target.value)}
+                  placeholder="搜索名称、分类或镜像"
+                  className="w-full rounded-md border border-gray-600 bg-gray-900 py-2 pl-9 pr-10 text-sm text-white outline-none transition placeholder:text-gray-500 focus:border-blue-400"
+                />
+                {environmentQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setEnvironmentQuery('')}
+                    className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded text-gray-400 hover:bg-gray-700 hover:text-white"
+                    aria-label="清空靶场搜索"
+                  >
+                    <FontAwesomeIcon icon={faTimes} aria-hidden="true" />
+                  </button>
+                )}
+              </div>
+            </div>
             <div className="space-y-4">
-              {Object.keys(targetEnvironments).map(category => (
+              {availableEnvironmentGroups.length === 0 ? (
+                <div className="rounded bg-gray-700 p-4 text-sm text-gray-300">
+                  没有找到匹配的靶场环境。
+                </div>
+              ) : availableEnvironmentGroups.map(({ category, sections }) => (
                 <div key={category} className="bg-gray-700 p-4 rounded">
                   <h3 className="text-lg font-semibold text-white mb-3 capitalize">
                     {category.replace(/-/g, ' ')} 靶场
                   </h3>
 
                   <div className="space-y-2">
-                    {Object.keys(targetEnvironments[category].sections || {}).map(sectionName => {
-                      const target = targetEnvironments[category].sections[sectionName];
+                    {sections.map(({ sectionName, target }) => {
                       // 检查镜像是否已安装，处理不同格式的镜像名称
                       const isInstalled = installedImages.some(image => {
                         if (typeof image === 'string') {
