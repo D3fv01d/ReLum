@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faDatabase, 
-  faCode, 
-  faPaperPlane, 
+import {
+  faDatabase,
+  faCode,
+  faPaperPlane,
   faUpload,
   faDownload,
   faTerminal,
@@ -16,125 +16,171 @@ import {
   faLayerGroup,
   faGlobe,
   faHdd,
+  faSearch,
   faArrowRight
 } from '@fortawesome/free-solid-svg-icons';
 import TerminalFeature from '../components/TerminalPanel';
 
+const categories = [
+  {
+    id: 'sql-injection',
+    icon: faDatabase,
+    title: 'SQL注入漏洞',
+    description: '利用SQL语句执行漏洞获取或操作数据库信息',
+    items: ['字符型SQL注入', '数值型SQL注入', '联合注入', '报错注入', '布尔盲注', '时间盲注', '二阶注入', '绕过技术']
+  },
+  {
+    id: 'xss',
+    icon: faCode,
+    title: '跨站脚本漏洞',
+    description: '向网页注入恶意脚本，实现会话劫持等攻击',
+    items: ['反射型跨站脚本', '存储型跨站脚本', 'DOM型跨站脚本', '利用XSS平台获取Cookie']
+  },
+  {
+    id: 'csrf',
+    icon: faPaperPlane,
+    title: '跨站请求伪造漏洞',
+    description: '诱导用户执行非本意的操作，利用已有的身份认证',
+    items: ['GET型CSRF', 'POST型CSRF', 'CSRF Token窃取']
+  },
+  {
+    id: 'file-upload',
+    icon: faUpload,
+    title: '任意文件上传漏洞',
+    description: '绕过文件上传限制，上传恶意文件执行代码',
+    items: ['JavaScript校验绕过', 'MIME类型检测绕过', '扩展名校验绕过', '文件内容检测绕过', '二次渲染绕过', '条件竞争绕过']
+  },
+  {
+    id: 'file-download',
+    icon: faDownload,
+    title: '任意文件下载漏洞',
+    description: '利用漏洞获取服务器上的敏感文件和信息',
+    items: ['路径遍历', '未授权文件任意下载', '敏感文件获取']
+  },
+  {
+    id: 'command-execution',
+    icon: faTerminal,
+    title: '命令/代码执行漏洞',
+    description: '在目标系统上执行恶意命令或代码获取控制权',
+    items: ['PHP命令执行', 'Java命令执行', 'Python模板注入', '反弹shell']
+  },
+  {
+    id: 'file-inclusion',
+    icon: faFile,
+    title: '文件包含漏洞',
+    description: '利用文件包含机制载入恶意文件或读取敏感信息',
+    items: ['基础文件包含', '敏感文件读取', '日志文件包含', 'SESSION文件包含', '伪协议实现文件读取和代码执行', '任意目录遍历', '00截断绕过']
+  },
+  {
+    id: 'xxe',
+    icon: faFileCode,
+    title: 'XML外部实体注入漏洞',
+    description: '利用XML解析器处理外部实体引用的特性进行攻击',
+    items: ['有回显的XXE', '无回显的XXE']
+  },
+  {
+    id: 'logic-vulnerabilities',
+    icon: faExchangeAlt,
+    title: '业务逻辑漏洞',
+    description: '利用应用业务流程中的设计缺陷进行攻击',
+    items: ['用户名遍历', '重放攻击', '验证码复用', '支付逻辑', '水平越权', '垂直越权', '未授权访问', '登录认证绕过', '密码重置', '空口令']
+  },
+  {
+    id: 'middleware',
+    icon: faServer,
+    title: '中间件漏洞',
+    description: '攻击各类应用服务器中间件的安全漏洞',
+    items: ['Weblogic多种典型漏洞利用', 'Tomcat典型漏洞利用', 'Jboss典型漏洞利用']
+  },
+  {
+    id: 'components',
+    icon: faPuzzlePiece,
+    title: '组件漏洞',
+    description: '利用常见开发组件中的漏洞进行攻击',
+    items: ['Shiro组件典型漏洞利用', 'Fastjson典型漏洞利用', 'Log4j典型漏洞利用']
+  },
+  {
+    id: 'frameworks',
+    icon: faLayerGroup,
+    title: '第三方框架漏洞',
+    description: '针对流行开发框架中的安全漏洞利用',
+    items: ['Thinkphp多种典型漏洞利用', 'Struts2多种典型漏洞利用', 'Spring框架典型漏洞利用', '若依框架典型漏洞利用']
+  },
+  {
+    id: 'cms',
+    icon: faGlobe,
+    title: 'CMS漏洞利用实战',
+    description: '常见内容管理系统的漏洞利用技术',
+    items: ['Wordpress多种典型漏洞利用', '其他常见CMS典型漏洞利用']
+  },
+  {
+    id: 'database',
+    icon: faHdd,
+    title: '数据库漏洞利用实战',
+    description: '各类数据库系统的安全漏洞利用技术',
+    items: ['MySQL典型漏洞利用', 'Redis典型漏洞利用', 'PostgreSQL典型漏洞利用']
+  }
+];
+
 function Knowledge() {
-  // 知识分类数据
-  const categories = [
-    {
-      id: 'sql-injection',
-      icon: faDatabase,
-      title: 'SQL注入漏洞',
-      description: '利用SQL语句执行漏洞获取或操作数据库信息',
-      items: ['字符型SQL注入', '数值型SQL注入', '联合注入', '报错注入', '布尔盲注', '时间盲注', '二阶注入', '绕过技术']
-    },
-    {
-      id: 'xss',
-      icon: faCode,
-      title: '跨站脚本漏洞',
-      description: '向网页注入恶意脚本，实现会话劫持等攻击',
-      items: ['反射型跨站脚本', '存储型跨站脚本', 'DOM型跨站脚本', '利用XSS平台获取Cookie']
-    },
-    {
-      id: 'csrf',
-      icon: faPaperPlane,
-      title: '跨站请求伪造漏洞',
-      description: '诱导用户执行非本意的操作，利用已有的身份认证',
-      items: ['GET型CSRF', 'POST型CSRF', 'CSRF Token窃取']
-    },
-    {
-      id: 'file-upload',
-      icon: faUpload,
-      title: '任意文件上传漏洞',
-      description: '绕过文件上传限制，上传恶意文件执行代码',
-      items: ['JavaScript校验绕过', 'MIME类型检测绕过', '扩展名校验绕过', '文件内容检测绕过', '二次渲染绕过', '条件竞争绕过']
-    },
-    {
-      id: 'file-download',
-      icon: faDownload,
-      title: '任意文件下载漏洞',
-      description: '利用漏洞获取服务器上的敏感文件和信息',
-      items: ['路径遍历', '未授权文件任意下载', '敏感文件获取']
-    },
-    {
-      id: 'command-execution',
-      icon: faTerminal,
-      title: '命令/代码执行漏洞',
-      description: '在目标系统上执行恶意命令或代码获取控制权',
-      items: ['PHP命令执行', 'Java命令执行', 'Python模板注入', '反弹shell']
-    },
-    {
-      id: 'file-inclusion',
-      icon: faFile,
-      title: '文件包含漏洞',
-      description: '利用文件包含机制载入恶意文件或读取敏感信息',
-      items: ['基础文件包含', '敏感文件读取', '日志文件包含', 'SESSION文件包含', '伪协议实现文件读取和代码执行', '任意目录遍历', '00截断绕过']
-    },
-    {
-      id: 'xxe',
-      icon: faFileCode,
-      title: 'XML外部实体注入漏洞',
-      description: '利用XML解析器处理外部实体引用的特性进行攻击',
-      items: ['有回显的XXE', '无回显的XXE']
-    },
-    {
-      id: 'logic-vulnerabilities',
-      icon: faExchangeAlt,
-      title: '业务逻辑漏洞',
-      description: '利用应用业务流程中的设计缺陷进行攻击',
-      items: ['用户名遍历', '重放攻击', '验证码复用', '支付逻辑', '水平越权', '垂直越权', '未授权访问', '登录认证绕过', '密码重置', '空口令']
-    },
-    {
-      id: 'middleware',
-      icon: faServer,
-      title: '中间件漏洞',
-      description: '攻击各类应用服务器中间件的安全漏洞',
-      items: ['Weblogic多种典型漏洞利用', 'Tomcat典型漏洞利用', 'Jboss典型漏洞利用']
-    },
-    {
-      id: 'components',
-      icon: faPuzzlePiece,
-      title: '组件漏洞',
-      description: '利用常见开发组件中的漏洞进行攻击',
-      items: ['Shiro组件典型漏洞利用', 'Fastjson典型漏洞利用', 'Log4j典型漏洞利用']
-    },
-    {
-      id: 'frameworks',
-      icon: faLayerGroup,
-      title: '第三方框架漏洞',
-      description: '针对流行开发框架中的安全漏洞利用',
-      items: ['Thinkphp多种典型漏洞利用', 'Struts2多种典型漏洞利用', 'Spring框架典型漏洞利用', '若依框架典型漏洞利用']
-    },
-    {
-      id: 'cms',
-      icon: faGlobe,
-      title: 'CMS漏洞利用实战',
-      description: '常见内容管理系统的漏洞利用技术',
-      items: ['Wordpress多种典型漏洞利用', '其他常见CMS典型漏洞利用']
-    },
-    {
-      id: 'database',
-      icon: faHdd,
-      title: '数据库漏洞利用实战',
-      description: '各类数据库系统的安全漏洞利用技术',
-      items: ['MySQL典型漏洞利用', 'Redis典型漏洞利用', 'PostgreSQL典型漏洞利用']
+  const [query, setQuery] = useState('');
+
+  const filteredCategories = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return categories;
     }
-  ];
+
+    return categories.filter(category => {
+      const searchableText = [
+        category.title,
+        category.description,
+        ...category.items,
+      ].join(' ').toLowerCase();
+
+      return searchableText.includes(normalizedQuery);
+    });
+  }, [query]);
 
   return (
     <main className="max-w-7xl mx-auto px-4 py-8 relative">
       <TerminalFeature />
-      
+
       <div className="bg-[#222222] rounded-lg p-6">
-        <h1 className="text-3xl font-bold mb-4">网络安全知识库</h1>
-        <p className="text-gray-400 mb-6">这里汇集了丰富的网络安全知识和学习资源。</p>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {categories.map((category) => (
-            <Link 
-              to={`/knowledge/${category.id}`} 
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold mb-4">网络安全知识库</h1>
+            <p className="text-gray-400">这里汇集了丰富的网络安全知识和学习资源。</p>
+          </div>
+
+          <label className="relative w-full md:max-w-sm">
+            <span className="sr-only">搜索知识库</span>
+            <FontAwesomeIcon icon={faSearch} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input
+              type="search"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="搜索漏洞、技术或章节"
+              className="w-full bg-[#1E1E1E] border border-[#444] rounded-md pl-10 pr-3 py-2 text-white outline-none focus:border-primary"
+            />
+          </label>
+        </div>
+
+        <div className="flex items-center justify-between text-sm text-gray-400 mb-4">
+          <span>共 {categories.length} 类知识，当前显示 {filteredCategories.length} 类</span>
+          {query && (
+            <button type="button" className="text-primary hover:text-primary/90" onClick={() => setQuery('')}>
+              清除搜索
+            </button>
+          )}
+        </div>
+
+        {filteredCategories.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredCategories.map((category) => (
+            <Link
+              to={`/knowledge/${category.id}`}
               key={category.id}
               className="bg-[#2A2A2A] rounded-lg p-5 hover:bg-[#333333] transition-colors duration-200 block"
             >
@@ -150,11 +196,16 @@ function Knowledge() {
                 ))}
               </ul>
             </Link>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-[#2A2A2A] rounded-lg p-8 text-center text-gray-400">
+            未找到匹配的知识分类，请尝试更短的关键词。
+          </div>
+        )}
       </div>
     </main>
   );
 }
 
-export default Knowledge; 
+export default Knowledge;
