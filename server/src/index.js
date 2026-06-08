@@ -105,10 +105,43 @@ const validateTargetPayload = (target) => {
   return null;
 };
 
+const createRateLimiter = ({ windowMs, maxRequests }) => {
+  const buckets = new Map();
+
+  return (req, res, next) => {
+    const now = Date.now();
+    const key = req.ip || req.socket.remoteAddress || 'unknown';
+    const bucket = buckets.get(key) || { count: 0, resetAt: now + windowMs };
+
+    if (bucket.resetAt <= now) {
+      bucket.count = 0;
+      bucket.resetAt = now + windowMs;
+    }
+
+    bucket.count += 1;
+    buckets.set(key, bucket);
+
+    res.setHeader('X-RateLimit-Limit', String(maxRequests));
+    res.setHeader('X-RateLimit-Remaining', String(Math.max(maxRequests - bucket.count, 0)));
+    res.setHeader('X-RateLimit-Reset', String(Math.ceil(bucket.resetAt / 1000)));
+
+    if (bucket.count > maxRequests) {
+      res.status(429).json({ error: true, message: '请求过于频繁，请稍后再试' });
+      return;
+    }
+
+    next();
+  };
+};
+
 // 安全增强中间件
 app.use(helmet());
 app.use(cors(corsOptions));
 app.use(express.json({ limit: JSON_BODY_LIMIT }));
+app.use('/api/target', createRateLimiter({
+  windowMs: Number.parseInt(process.env.TARGET_RATE_LIMIT_WINDOW_MS, 10) || 60 * 1000,
+  maxRequests: Number.parseInt(process.env.TARGET_RATE_LIMIT_MAX, 10) || 120,
+}));
 
 // 健康检查路由
 app.get('/api/health', (req, res) => {
