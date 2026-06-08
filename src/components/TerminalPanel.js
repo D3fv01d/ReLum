@@ -18,6 +18,8 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import { createShellConnection } from '../services/shellConnection';
 
+const MAX_COMMAND_HISTORY = 50;
+
 // AI对话组件
 function AIChat({ showAIChat, setShowAIChat, position, onDragStart }) {
   const [messages, setMessages] = useState([
@@ -244,6 +246,8 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
   const shellConnectionRef = useRef(null);
   const [shellActive, setShellActive] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
+  const commandHistoryRef = useRef([]);
+  const commandHistoryIndexRef = useRef(null);
   const floatingWidth = 600; // 悬浮窗宽度
   const floatingHeight = 400; // 悬浮窗高度
 
@@ -390,11 +394,63 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
     shellConnectionRef.current = null;
   };
 
+  const rememberCommand = (command) => {
+    const history = commandHistoryRef.current;
+
+    if (history[history.length - 1] !== command) {
+      commandHistoryRef.current = [...history, command].slice(-MAX_COMMAND_HISTORY);
+    }
+
+    commandHistoryIndexRef.current = null;
+  };
+
+  const handleTerminalInputChange = (e) => {
+    setTerminalInput(e.target.value);
+  };
+
+  const handleTerminalKeyDown = (e) => {
+    const history = commandHistoryRef.current;
+    const currentValue = e.currentTarget.value.trim();
+    const currentHistoryIndex = commandHistoryIndexRef.current ??
+      (currentValue ? history.lastIndexOf(currentValue) : null);
+
+    if (e.key === 'ArrowUp' && history.length > 0) {
+      e.preventDefault();
+      const nextIndex = currentHistoryIndex === null || currentHistoryIndex === -1
+        ? history.length - 1
+        : Math.max(0, currentHistoryIndex - 1);
+
+      commandHistoryIndexRef.current = nextIndex;
+      setTerminalInput(history[nextIndex] || '');
+      return;
+    }
+
+    if (e.key === 'ArrowDown' && currentHistoryIndex !== null && currentHistoryIndex !== -1) {
+      e.preventDefault();
+      const nextIndex = currentHistoryIndex + 1;
+
+      if (nextIndex >= history.length) {
+        commandHistoryIndexRef.current = null;
+        setTerminalInput('');
+        return;
+      }
+
+      commandHistoryIndexRef.current = nextIndex;
+      setTerminalInput(history[nextIndex] || '');
+    }
+
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') {
+      commandHistoryIndexRef.current = null;
+    }
+  };
+
   // 处理命令提交
   const handleTerminalSubmit = (e) => {
     e.preventDefault();
     const command = terminalInput.trim();
     if (!command) return;
+
+    rememberCommand(command);
 
     // 添加用户输入到历史记录
     setTerminalHistory(prev => [...prev, { type: 'input', content: command }]);
@@ -538,7 +594,8 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
               ref={inputRef}
               type="text"
               value={terminalInput}
-              onChange={(e) => setTerminalInput(e.target.value)}
+              onChange={handleTerminalInputChange}
+              onKeyDown={handleTerminalKeyDown}
               className="flex-1 bg-transparent outline-none text-white font-mono text-sm tracking-wide border-none p-0 m-0"
               autoFocus
             />
@@ -646,7 +703,8 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
             ref={inputRef}
             type="text"
             value={terminalInput}
-            onChange={(e) => setTerminalInput(e.target.value)}
+            onChange={handleTerminalInputChange}
+            onKeyDown={handleTerminalKeyDown}
             className="flex-1 bg-transparent outline-none text-white font-mono text-sm tracking-wide border-none p-0 m-0"
             autoFocus
           />
