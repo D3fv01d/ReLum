@@ -4,8 +4,12 @@ const WebSocket = require('ws');
 const cors = require('cors');
 const helmet = require('helmet');
 const dotenv = require('dotenv');
-const crypto = require('crypto');
 const logger = require('./utils/logger');
+const createRateLimiter = require('./middleware/rateLimiter');
+const createRequestContext = require('./middleware/requestContext');
+const {
+  createOriginPolicy,
+} = require('./utils/originPolicy');
 const {
   isValidDockerImage,
   isValidDockerResourceId,
@@ -35,78 +39,13 @@ const PORT = process.env.PORT || 8080;
 const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '1mb';
 const SHELL_COMMAND_MAX_LENGTH = Number.parseInt(process.env.SHELL_COMMAND_MAX_LENGTH, 10) || 2000;
 const SHELL_WS_MAX_PAYLOAD = Number.parseInt(process.env.SHELL_WS_MAX_PAYLOAD, 10) || 8192;
-const allowedOrigins = (process.env.CORS_ORIGIN || '')
-  .split(',')
-  .map(origin => origin.trim())
-  .filter(Boolean);
-
-const isOriginAllowed = (origin) => {
-  if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes('*')) {
-    return true;
-  }
-
-  return allowedOrigins.includes(origin);
-};
-
-const corsOptions = {
-  origin(origin, callback) {
-    if (isOriginAllowed(origin)) {
-      callback(null, true);
-      return;
-    }
-
-    callback(null, false);
-  },
-};
-
-const createRequestId = () => (
-  typeof crypto.randomUUID === 'function'
-    ? crypto.randomUUID()
-    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
-);
-
-const createRateLimiter = ({ windowMs, maxRequests }) => {
-  const buckets = new Map();
-
-  return (req, res, next) => {
-    const now = Date.now();
-    const key = req.ip || req.socket.remoteAddress || 'unknown';
-    const bucket = buckets.get(key) || { count: 0, resetAt: now + windowMs };
-
-    if (bucket.resetAt <= now) {
-      bucket.count = 0;
-      bucket.resetAt = now + windowMs;
-    }
-
-    bucket.count += 1;
-    buckets.set(key, bucket);
-
-    res.setHeader('X-RateLimit-Limit', String(maxRequests));
-    res.setHeader('X-RateLimit-Remaining', String(Math.max(maxRequests - bucket.count, 0)));
-    res.setHeader('X-RateLimit-Reset', String(Math.ceil(bucket.resetAt / 1000)));
-
-    if (bucket.count > maxRequests) {
-      res.status(429).json({ error: true, message: '请求过于频繁，请稍后再试' });
-      return;
-    }
-
-    next();
-  };
-};
+const {
+  corsOptions,
+  isOriginAllowed,
+} = createOriginPolicy(process.env.CORS_ORIGIN || '');
 
 // 安全增强中间件
-app.use((req, res, next) => {
-  req.requestId = req.get('X-Request-Id') || createRequestId();
-  const startedAt = Date.now();
-
-  res.setHeader('X-Request-Id', req.requestId);
-
-  res.on('finish', () => {
-    logger.info(`${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - startedAt}ms requestId=${req.requestId}`);
-  });
-
-  next();
-});
+app.use(createRequestContext(logger));
 app.use(helmet());
 app.use(cors(corsOptions));
 app.use(express.json({ limit: JSON_BODY_LIMIT }));
