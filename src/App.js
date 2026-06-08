@@ -6,6 +6,7 @@ import Knowledge from './pages/Knowledge';
 import KnowledgeDetail from './pages/KnowledgeDetail';
 import Practice from './pages/Practice';
 import Settings from './pages/Settings';
+import NotFound from './pages/NotFound';
 
 function App() {
   return (
@@ -18,9 +19,10 @@ function App() {
         <Route path="/knowledge/:categoryId" element={<KnowledgeDetail />} />
         <Route path="/practice" element={<Practice />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </div>
   );
 }
 
-export default App; 
+export default App;
