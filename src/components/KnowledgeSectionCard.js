@@ -13,6 +13,7 @@ import {
   faPowerOff,
 } from '@fortawesome/free-solid-svg-icons';
 import DetailedTutorial from './DetailedTutorial';
+import SectionDeepDive from './knowledge/SectionDeepDive';
 
 const difficultyClassName = {
   beginner: 'bg-green-500/20 text-green-400',
@@ -83,17 +84,19 @@ const KnowledgeSectionCard = ({
 
       <p className="text-gray-300 mb-6">{section.content}</p>
 
+      <SectionDeepDive categoryId={categoryId} category={category} section={section} />
+
       <div id={`tutorial-${index}`}>
         <DetailedTutorial categoryId={categoryId} category={category} section={section} />
       </div>
 
       {section.examples && section.examples.length > 0 && (
-        <div>
-          <h3 className="text-lg font-medium mb-3 flex items-center">
+        <details className="mb-4 rounded-lg border border-[#3A3A3A] bg-[#242424] p-4">
+          <summary className="cursor-pointer text-lg font-medium">
             <FontAwesomeIcon icon={faCode} className="text-primary mr-2" />
-            示例代码
-          </h3>
-          <div className="bg-[#1E1E1E] rounded-lg p-4 mb-4">
+            补充示例代码
+          </summary>
+          <div className="mt-4 rounded-lg bg-[#1E1E1E] p-4">
             <pre className="text-gray-300 overflow-x-auto">
               {section.examples.map((example, exampleIndex) => (
                 <div key={exampleIndex} className="mb-2 font-mono">
@@ -103,21 +106,21 @@ const KnowledgeSectionCard = ({
               ))}
             </pre>
           </div>
-        </div>
+        </details>
       )}
 
       {section.code && (
-        <div>
-          <h3 className="text-lg font-medium mb-3 flex items-center">
+        <details className="mb-4 rounded-lg border border-[#3A3A3A] bg-[#242424] p-4">
+          <summary className="cursor-pointer text-lg font-medium">
             <FontAwesomeIcon icon={faCode} className="text-primary mr-2" />
-            示例代码
-          </h3>
-          <div className="bg-[#1E1E1E] rounded-lg p-4 mb-4">
+            补充示例代码
+          </summary>
+          <div className="mt-4 rounded-lg bg-[#1E1E1E] p-4">
             <pre className="text-gray-300 overflow-x-auto font-mono">
               <code className="text-primary whitespace-pre-wrap">{section.code}</code>
             </pre>
           </div>
-        </div>
+        </details>
       )}
 
       <div className="flex justify-between items-center mt-4">

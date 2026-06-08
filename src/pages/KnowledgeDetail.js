@@ -34,6 +34,8 @@ function KnowledgeDetail() {
 
     return category.sections.map((_, index) => `knowledge-${categoryId}-section-${index + 1}`);
   }, [category, categoryId]);
+  const activeSectionIndex = Math.max(0, sectionIds.indexOf(activeSectionId));
+  const activeSection = category?.sections?.[activeSectionIndex];
 
   // 处理复制URL到剪贴板
   const handleCopyUrl = (url) => {
@@ -189,38 +191,6 @@ function KnowledgeDetail() {
     setActiveSectionId(sectionIds.includes(hashId) ? hashId : sectionIds[0]);
   }, [sectionIds]);
 
-  useEffect(() => {
-    if (
-      sectionIds.length === 0 ||
-      typeof window === 'undefined' ||
-      !('IntersectionObserver' in window)
-    ) {
-      return undefined;
-    }
-
-    const observer = new IntersectionObserver((entries) => {
-      const visibleEntry = entries
-        .filter(entry => entry.isIntersecting)
-        .sort((first, second) => second.intersectionRatio - first.intersectionRatio)[0];
-
-      if (visibleEntry) {
-        setActiveSectionId(visibleEntry.target.id);
-      }
-    }, {
-      rootMargin: '-120px 0px -55% 0px',
-      threshold: [0.1, 0.25, 0.5],
-    });
-
-    sectionIds.forEach((sectionId) => {
-      const element = document.getElementById(sectionId);
-      if (element) {
-        observer.observe(element);
-      }
-    });
-
-    return () => observer.disconnect();
-  }, [sectionIds]);
-
   // 页面加载后检查运行中的环境
   useEffect(() => {
     if (!loading && category) {
@@ -249,18 +219,18 @@ function KnowledgeDetail() {
   };
 
   const handleSectionSelect = useCallback((sectionId) => {
-    const element = document.getElementById(sectionId);
-
-    if (!element) {
-      return;
-    }
-
     setActiveSectionId(sectionId);
-    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
     if (window.history?.replaceState) {
       window.history.replaceState(null, '', `${window.location.pathname}#${sectionId}`);
     }
+
+    window.requestAnimationFrame(() => {
+      document.getElementById('knowledge-study-panel')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
   }, []);
 
   // 如果正在加载
@@ -335,26 +305,26 @@ function KnowledgeDetail() {
           targetEnvStatuses={targetEnvStatuses}
         />
 
-        <div className="space-y-6">
-          {category.sections.map((section, index) => (
+        <div id="knowledge-study-panel" className="space-y-6 scroll-mt-24">
+          {activeSection && (
             <KnowledgeSectionCard
-              key={section.title}
+              key={activeSection.title}
               category={category}
               categoryId={categoryId}
               copyStatus={copyStatus}
-              flagStatus={flagStatus[section.title]}
-              flagValue={flagValues[section.title] || ''}
-              index={index}
+              flagStatus={flagStatus[activeSection.title]}
+              flagValue={flagValues[activeSection.title] || ''}
+              index={activeSectionIndex}
               onCopyUrl={handleCopyUrl}
               onExperiment={handleExperimentClick}
               onFlagChange={handleFlagChange}
               onFlagVerify={handleFlagVerify}
               onStopEnvironment={handleStopEnvironment}
-              section={section}
-              sectionId={sectionIds[index]}
-              targetEnvStatus={targetEnvStatuses[section.title]}
+              section={activeSection}
+              sectionId={sectionIds[activeSectionIndex]}
+              targetEnvStatus={targetEnvStatuses[activeSection.title]}
             />
-          ))}
+          )}
         </div>
       </div>
     </main>
