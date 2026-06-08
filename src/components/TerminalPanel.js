@@ -77,15 +77,6 @@ function AIChat({ showAIChat, setShowAIChat, position, onDragStart }) {
         throw new Error('AI服务尚未加载完成，请稍后再试');
       }
 
-      // 从本地存储加载配置
-      const savedConfig = localStorage.getItem('deepseekConfig');
-      const deepseekConfig = savedConfig ? JSON.parse(savedConfig) : null;
-
-      // 检查是否配置了API密钥
-      if (!deepseekConfig || !deepseekConfig.apiKey) {
-        throw new Error('API密钥未配置。请前往设置页面配置DeepSeek API。');
-      }
-
       // 准备消息历史
       const messageHistory = messages.concat(userMessage);
 
