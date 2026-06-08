@@ -78,12 +78,24 @@ const isValidContainerName = (containerName) => (
   )
 );
 
+const isValidRequiredContainerName = (containerName) => (
+  containerName !== undefined && isValidContainerName(containerName)
+);
+
 const isValidStringArray = (value) => (
   value === undefined ||
   (
     Array.isArray(value) &&
     value.every(item => typeof item === 'string' && item.length <= 500 && !/[\r\n]/.test(item))
   )
+);
+
+const isValidDockerResourceId = (value) => (
+  typeof value === 'string' &&
+  value.length > 0 &&
+  value.length <= 255 &&
+  !/[\s\r\n]/.test(value) &&
+  /^[A-Za-z0-9_./:@-]+$/.test(value)
 );
 
 const validateTargetPayload = (target) => {
@@ -229,8 +241,8 @@ app.post('/api/target/stop', async (req, res) => {
   try {
     const { containerName } = req.body;
 
-    if (!containerName) {
-      return res.status(400).json({ error: true, message: '缺少容器名称参数' });
+    if (!isValidRequiredContainerName(containerName)) {
+      return res.status(400).json({ error: true, message: '容器名称格式无效' });
     }
 
     logger.info(`停止靶场环境: ${containerName}`);
@@ -246,6 +258,11 @@ app.post('/api/target/stop', async (req, res) => {
 app.get('/api/target/container/:name', async (req, res) => {
   try {
     const { name } = req.params;
+
+    if (!isValidRequiredContainerName(name)) {
+      return res.status(400).json({ error: true, message: '容器名称格式无效' });
+    }
+
     const containerInfo = await dockerService.getContainerInfo(name);
     res.status(200).json({ containerInfo });
   } catch (error) {
@@ -259,8 +276,8 @@ app.post('/api/target/pull', async (req, res) => {
   try {
     const { imageName } = req.body;
 
-    if (!imageName) {
-      return res.status(400).json({ error: true, message: '缺少镜像名称参数' });
+    if (!isValidDockerImage(imageName)) {
+      return res.status(400).json({ error: true, message: 'Docker镜像名称格式无效' });
     }
 
     // 异步拉取镜像，不等待完成
@@ -279,6 +296,11 @@ app.post('/api/target/pull', async (req, res) => {
 app.delete('/api/target/image/:id', async (req, res) => {
   try {
     const { id } = req.params;
+
+    if (!isValidDockerResourceId(id)) {
+      return res.status(400).json({ error: true, message: 'Docker镜像ID格式无效' });
+    }
+
     await dockerService.removeImage(id);
     res.status(200).json({ error: false, message: '镜像已删除' });
   } catch (error) {
