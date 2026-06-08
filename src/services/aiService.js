@@ -3,6 +3,35 @@
  */
 import deepseekConfig from '../config/ai';
 
+const SAVED_CONFIG_KEY = 'deepseekConfig';
+
+const getSavedConfig = () => {
+  try {
+    const savedConfig = localStorage.getItem(SAVED_CONFIG_KEY);
+    return savedConfig ? JSON.parse(savedConfig) : null;
+  } catch (error) {
+    console.error('读取AI配置失败:', error);
+    return null;
+  }
+};
+
+const getActiveConfig = () => {
+  const savedConfig = getSavedConfig();
+
+  if (!savedConfig) {
+    return deepseekConfig;
+  }
+
+  return {
+    ...deepseekConfig,
+    ...savedConfig,
+    parameters: {
+      ...deepseekConfig.parameters,
+      ...savedConfig.parameters,
+    },
+  };
+};
+
 class AIService {
   /**
    * 发送对话消息到DeepSeek API
@@ -10,8 +39,10 @@ class AIService {
    * @returns {Promise} - 返回API响应的Promise
    */
   async sendMessage(messages) {
+    const activeConfig = getActiveConfig();
+
     // 检查API密钥是否已配置
-    if (!deepseekConfig.apiKey) {
+    if (!activeConfig.apiKey) {
       throw new Error('DeepSeek API密钥未配置。请在配置文件中设置有效的API密钥。');
     }
 
@@ -20,7 +51,7 @@ class AIService {
       const completeMessages = [
         {
           role: 'system',
-          content: deepseekConfig.systemPrompt,
+          content: activeConfig.systemPrompt,
         },
         ...messages.map(msg => ({
           role: msg.role,
@@ -33,20 +64,20 @@ class AIService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${deepseekConfig.apiKey}`,
+          'Authorization': `Bearer ${activeConfig.apiKey}`,
         },
         body: JSON.stringify({
-          model: deepseekConfig.model,
+          model: activeConfig.model,
           messages: completeMessages,
-          temperature: deepseekConfig.parameters.temperature,
-          max_tokens: deepseekConfig.parameters.max_tokens,
-          top_p: deepseekConfig.parameters.top_p,
+          temperature: activeConfig.parameters.temperature,
+          max_tokens: activeConfig.parameters.max_tokens,
+          top_p: activeConfig.parameters.top_p,
         }),
       };
 
       // 发送请求到DeepSeek API
-      const response = await fetch(deepseekConfig.apiUrl, requestOptions);
-      
+      const response = await fetch(activeConfig.apiUrl, requestOptions);
+
       // 检查响应状态
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
@@ -59,6 +90,10 @@ class AIService {
 
       // 解析响应数据
       const data = await response.json();
+      if (!data.choices?.[0]?.message) {
+        throw new Error('API响应格式异常');
+      }
+
       return data.choices[0].message;
     } catch (error) {
       console.error('DeepSeek API调用错误:', error);
@@ -84,4 +119,4 @@ class AIService {
 
 // 创建单例实例
 const aiService = new AIService();
-export default aiService; 
+export default aiService;

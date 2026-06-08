@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
+import {
   faTerminal,
   faBrain,
   faTimes,
@@ -11,168 +11,12 @@ import {
   faStop,
   faSpinner,
   faExpand,
-  faCompress,
   faWindowRestore,
   faPaperPlane,
   faRobot,
   faUser
 } from '@fortawesome/free-solid-svg-icons';
-
-// 实际WebSocket连接类（用于连接到后端Shell服务）
-class RealShellConnection {
-  constructor(onMessage, onError, onClose) {
-    this.onMessage = onMessage;
-    this.onError = onError;
-    this.onClose = onClose;
-    this.websocket = null;
-    this.connected = false;
-    this.retryCount = 0;
-    this.maxRetries = 3;
-    this.reconnectTimeout = null;
-  }
-
-  connect() {
-    try {
-      // 使用安全的WebSocket连接到后端Shell服务
-      // 注意：需要在后端设置对应的WebSocket服务器
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.hostname;
-      // 修复Docker环境中的端口问题
-      let port = window.location.port;
-      
-      // 如果在Docker容器中，前端和后端在同一端口上提供服务
-      // 但在开发环境中，它们是在不同端口上
-      if (port === '') {
-        // 默认HTTP/HTTPS端口（空字符串）
-        port = '8080'; // 后端总是在8080
-      } else if (port === '3000') {
-        // 前端开发服务器端口
-        port = '8080'; // 后端端口
-      }
-      
-      const wsUrl = `${protocol}//${host}:${port}/api/shell`;
-      
-      console.log('正在连接WebSocket:', wsUrl); // 添加调试信息
-      this.onMessage(`正在连接到Shell服务...(${wsUrl})`);
-      
-      this.websocket = new WebSocket(wsUrl);
-      
-      this.websocket.onopen = () => {
-        this.connected = true;
-        this.retryCount = 0;
-        this.onMessage('连接成功! 安全隧道已建立');
-        this.onMessage('输入 help 查看可用命令');
-      };
-      
-      this.websocket.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'output') {
-            this.onMessage(data.content);
-          } else if (data.type === 'error') {
-            this.onError(data.content);
-          }
-        } catch (e) {
-          // 如果不是JSON格式，直接显示消息
-          this.onMessage(event.data);
-        }
-      };
-      
-      this.websocket.onerror = (error) => {
-        console.error('WebSocket错误:', error);
-        this.onError('连接错误：无法连接到Shell服务');
-        this.reconnect();
-      };
-      
-      this.websocket.onclose = () => {
-        this.connected = false;
-        this.onClose('Shell连接已关闭');
-        
-        // 只有当不是手动关闭的情况下才尝试重连
-        if (this.shouldReconnect) {
-          this.reconnect();
-        }
-      };
-    } catch (error) {
-      console.error('WebSocket初始化错误:', error);
-      this.onError(`连接初始化失败: ${error.message}`);
-    }
-  }
-
-  // 尝试重新连接
-  reconnect() {
-    if (this.retryCount >= this.maxRetries) {
-      this.onError(`连接失败，已尝试${this.maxRetries}次`);
-      return;
-    }
-    
-    this.retryCount++;
-    this.onMessage(`尝试重新连接(${this.retryCount}/${this.maxRetries})...`);
-    
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-    }
-    
-    this.reconnectTimeout = setTimeout(() => {
-      this.connect();
-    }, 2000); // 2秒后重试
-  }
-
-  // 发送命令到Shell服务器
-  send(command) {
-    if (!this.connected || !this.websocket) {
-      this.onError('未连接到Shell服务');
-      return;
-    }
-    
-    try {
-      this.websocket.send(JSON.stringify({
-        type: 'command',
-        content: command
-      }));
-    } catch (error) {
-      console.error('发送命令错误:', error);
-      this.onError(`发送命令失败: ${error.message}`);
-    }
-  }
-
-  // 断开连接
-  disconnect() {
-    this.shouldReconnect = false; // 标记为手动断开，不自动重连
-    
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectTimeout = null;
-    }
-    
-    if (this.websocket) {
-      // 先发送退出命令
-      try {
-        this.websocket.send(JSON.stringify({
-          type: 'command',
-          content: 'exit'
-        }));
-      } catch (e) {
-        // 忽略退出时的发送错误
-      }
-      
-      // 关闭WebSocket连接
-      try {
-        this.websocket.close();
-      } catch (e) {
-        console.error('关闭WebSocket连接错误:', e);
-      }
-      
-      this.websocket = null;
-      this.connected = false;
-    }
-  }
-}
-
-function createShellConnection(onMessage, onError, onClose) {
-  // 直接返回真实连接，不再使用模拟Shell
-  return Promise.resolve(new RealShellConnection(onMessage, onError, onClose));
-}
+import { createShellConnection } from '../services/shellConnection';
 
 // AI对话组件
 function AIChat({ showAIChat, setShowAIChat, position, onDragStart }) {
@@ -184,10 +28,10 @@ function AIChat({ showAIChat, setShowAIChat, position, onDragStart }) {
   const [apiError, setApiError] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
-  
+
   // 导入AI服务
   const [aiService, setAiService] = useState(null);
-  
+
   // 加载AI服务
   useEffect(() => {
     // 动态导入AI服务
@@ -198,87 +42,87 @@ function AIChat({ showAIChat, setShowAIChat, position, onDragStart }) {
       setApiError('加载AI服务失败，请刷新页面重试');
     });
   }, []);
-  
+
   // 自动滚动到对话底部
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages]);
-  
+
   // 自动聚焦输入框
   useEffect(() => {
     if (showAIChat && inputRef.current) {
       inputRef.current.focus();
     }
   }, [showAIChat]);
-  
+
   // 处理消息发送
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
-    
+
     // 添加用户消息
     const userMessage = { role: 'user', content: input };
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
     setApiError(null);
-    
+
     try {
       // 检查AI服务是否已加载
       if (!aiService) {
         throw new Error('AI服务尚未加载完成，请稍后再试');
       }
-      
+
       // 从本地存储加载配置
       const savedConfig = localStorage.getItem('deepseekConfig');
       const deepseekConfig = savedConfig ? JSON.parse(savedConfig) : null;
-      
+
       // 检查是否配置了API密钥
       if (!deepseekConfig || !deepseekConfig.apiKey) {
         throw new Error('API密钥未配置。请前往设置页面配置DeepSeek API。');
       }
-      
+
       // 准备消息历史
       const messageHistory = messages.concat(userMessage);
-      
+
       // 调用AI服务发送请求
       const response = await aiService.sendMessage(messageHistory);
-      
+
       // 添加AI响应到消息列表
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: response.content 
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: response.content
       }]);
     } catch (error) {
       console.error('AI对话错误:', error);
-      
+
       // 显示错误消息
       setApiError(error.message);
-      
+
       // 添加错误消息到对话中
-      setMessages(prev => [...prev, { 
-        role: 'assistant', 
-        content: `抱歉，发生了错误：${error.message}` 
+      setMessages(prev => [...prev, {
+        role: 'assistant',
+        content: `抱歉，发生了错误：${error.message}`
       }]);
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   return (
-    <div 
+    <div
       className="fixed bg-[#1E1E1E] shadow-2xl rounded-lg overflow-hidden flex flex-col z-40 border border-[#444]"
-      style={{ 
-        width: '350px', 
+      style={{
+        width: '350px',
         height: '500px',
         right: `${position.right}px`,
         top: `${position.top}px`,
       }}
     >
       {/* 对话框标题栏 */}
-      <div 
+      <div
         className="flex items-center justify-between bg-[#2D2D2D] p-3 border-b border-[#444] cursor-move"
         onMouseDown={onDragStart}
       >
@@ -286,7 +130,7 @@ function AIChat({ showAIChat, setShowAIChat, position, onDragStart }) {
           <FontAwesomeIcon icon={faBrain} className="text-primary mr-2" />
           <div className="text-sm font-medium text-white">ReLum AI 安全助手</div>
         </div>
-        <button 
+        <button
           className="text-gray-400 hover:text-white"
           onClick={() => setShowAIChat(false)}
           title="关闭对话"
@@ -294,7 +138,7 @@ function AIChat({ showAIChat, setShowAIChat, position, onDragStart }) {
           <FontAwesomeIcon icon={faTimes} />
         </button>
       </div>
-      
+
       {/* 对话内容区域 */}
       <div className="flex-1 p-4 overflow-y-auto bg-[#1E1E1E]">
         {messages.map((message, index) => (
@@ -303,9 +147,9 @@ function AIChat({ showAIChat, setShowAIChat, position, onDragStart }) {
               message.role === 'user' ? 'bg-primary/20 text-white' : 'bg-[#2A2A2A] text-gray-200'
             }`}>
               <div className="flex items-center mb-1">
-                <FontAwesomeIcon 
-                  icon={message.role === 'user' ? faUser : faRobot} 
-                  className={`mr-2 ${message.role === 'user' ? 'text-primary' : 'text-gray-400'}`} 
+                <FontAwesomeIcon
+                  icon={message.role === 'user' ? faUser : faRobot}
+                  className={`mr-2 ${message.role === 'user' ? 'text-primary' : 'text-gray-400'}`}
                 />
                 <span className="text-xs font-medium">
                   {message.role === 'user' ? '您' : 'AI助手'}
@@ -339,7 +183,7 @@ function AIChat({ showAIChat, setShowAIChat, position, onDragStart }) {
         )}
         <div ref={messagesEndRef} />
       </div>
-      
+
       {/* 输入区域 */}
       <form onSubmit={handleSendMessage} className="border-t border-[#444] p-3 bg-[#2D2D2D] flex">
         <input
@@ -351,7 +195,7 @@ function AIChat({ showAIChat, setShowAIChat, position, onDragStart }) {
           placeholder="输入安全问题..."
           disabled={isLoading}
         />
-        <button 
+        <button
           type="submit"
           className={`bg-primary px-3 rounded-r-md flex items-center justify-center ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-primary/90'}`}
           disabled={isLoading}
@@ -367,13 +211,13 @@ function AIChat({ showAIChat, setShowAIChat, position, onDragStart }) {
 export function FloatingTools({ onToggleTerminal, onToggleAIChat }) {
   return (
     <div className="fixed right-8 top-1/2 transform -translate-y-1/2 flex flex-col gap-4 z-10">
-      <button 
+      <button
         className="bg-primary w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-primary/90 transition-all duration-200"
         onClick={onToggleTerminal}
       >
         <FontAwesomeIcon icon={faTerminal} className="text-xl" />
       </button>
-      <button 
+      <button
         className="bg-primary w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-primary/90 transition-all duration-200"
         onClick={onToggleAIChat}
       >
@@ -402,7 +246,7 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
   const [isConnecting, setIsConnecting] = useState(false);
   const floatingWidth = 600; // 悬浮窗宽度
   const floatingHeight = 400; // 悬浮窗高度
-  
+
   const [terminalHistory, setTerminalHistory] = useState([
     { type: 'output', content: '欢迎使用 ReLum 安全实验终端!' },
     { type: 'output', content: '输入 help 查看可用命令' },
@@ -462,11 +306,11 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
         // 移动悬浮窗
         const deltaX = e.clientX - dragStartX.current;
         const deltaY = e.clientY - dragStartY.current;
-        
+
         // 确保悬浮窗不会被拖出屏幕
         const newX = Math.max(0, Math.min(window.innerWidth - floatingWidth, startPosition.current.x + deltaX));
         const newY = Math.max(0, Math.min(window.innerHeight - floatingHeight, startPosition.current.y + deltaY));
-        
+
         setFloatingPosition({ x: newX, y: newY });
       }
     };
@@ -490,7 +334,7 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
   // 切换悬浮模式
   const toggleFloatingMode = () => {
     setIsFloating(!isFloating);
-    
+
     // 如果切换到悬浮模式，设置初始位置在屏幕中央
     if (!isFloating) {
       const x = Math.max(0, (window.innerWidth - floatingWidth) / 2);
@@ -502,10 +346,10 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
   // 连接本地Shell
   const connectShell = () => {
     if (shellActive || isConnecting) return;
-    
+
     setIsConnecting(true);
     setTerminalHistory(prev => [...prev, { type: 'output', content: '正在尝试连接到Shell服务...' }]);
-    
+
     // 创建Shell连接
     createShellConnection(
       // 收到消息
@@ -529,19 +373,19 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
       setShellActive(true);
       setIsConnecting(false);
     }).catch(error => {
-      setTerminalHistory(prev => [...prev, { 
-        type: 'output', 
-        content: `Shell连接初始化失败: ${error.message}`, 
-        error: true 
+      setTerminalHistory(prev => [...prev, {
+        type: 'output',
+        content: `Shell连接初始化失败: ${error.message}`,
+        error: true
       }]);
       setIsConnecting(false);
     });
   };
-  
+
   // 断开Shell连接
   const disconnectShell = () => {
     if (!shellActive || !shellConnectionRef.current) return;
-    
+
     shellConnectionRef.current.disconnect();
     shellConnectionRef.current = null;
   };
@@ -549,15 +393,16 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
   // 处理命令提交
   const handleTerminalSubmit = (e) => {
     e.preventDefault();
-    if (!terminalInput.trim()) return;
+    const command = terminalInput.trim();
+    if (!command) return;
 
     // 添加用户输入到历史记录
-    setTerminalHistory([...terminalHistory, { type: 'input', content: terminalInput }]);
-    
+    setTerminalHistory(prev => [...prev, { type: 'input', content: command }]);
+
     // 如果Shell连接活跃，发送命令到Shell
     if (shellActive && shellConnectionRef.current) {
       // 特殊处理clear命令
-      if (terminalInput.trim().toLowerCase() === 'clear') {
+      if (command.toLowerCase() === 'clear') {
         // 清空历史记录，只保留一个清除成功的消息
         setTimeout(() => {
           setTerminalHistory([
@@ -566,28 +411,28 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
         }, 100);
       }
       // 发送到shell
-      shellConnectionRef.current.send(terminalInput);
+      shellConnectionRef.current.send(command);
     } else {
       // 未连接时只处理少数基本命令
-      if (terminalInput.toLowerCase() === 'help') {
-        setTerminalHistory(prev => [...prev, { 
-          type: 'output', 
-          content: '可用命令:\n- help: 显示帮助信息\n- clear: 清除终端\n- shell: 连接到Shell服务' 
+      if (command.toLowerCase() === 'help') {
+        setTerminalHistory(prev => [...prev, {
+          type: 'output',
+          content: '可用命令:\n- help: 显示帮助信息\n- clear: 清除终端\n- shell: 连接到Shell服务'
         }]);
-      } else if (terminalInput.toLowerCase() === 'clear') {
+      } else if (command.toLowerCase() === 'clear') {
         setTerminalHistory([
           { type: 'output', content: '终端已清除' },
         ]);
-      } else if (terminalInput.toLowerCase() === 'shell') {
+      } else if (command.toLowerCase() === 'shell') {
         connectShell();
       } else {
-        setTerminalHistory(prev => [...prev, { 
-          type: 'output', 
-          content: '请先连接到Shell服务。输入 shell 命令建立连接。' 
+        setTerminalHistory(prev => [...prev, {
+          type: 'output',
+          content: '请先连接到Shell服务。输入 shell 命令建立连接。'
         }]);
       }
     }
-    
+
     // 清空输入框
     setTerminalInput('');
   };
@@ -602,24 +447,24 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
   // 渲染悬浮模式的终端
   if (isFloating && showTerminal) {
     return (
-      <div 
+      <div
         className="fixed bg-[#1E1E1E] shadow-2xl rounded-lg overflow-hidden flex flex-col z-40 border border-[#444]"
-        style={{ 
-          width: `${floatingWidth}px`, 
+        style={{
+          width: `${floatingWidth}px`,
           height: `${floatingHeight}px`,
           left: `${floatingPosition.x}px`,
           top: `${floatingPosition.y}px`,
         }}
       >
         {/* 悬浮窗标题栏 */}
-        <div 
+        <div
           className="flex items-center justify-between bg-[#2D2D2D] p-2 border-b border-[#444] cursor-move"
           onMouseDown={handleFloatingDragStart}
         >
           <div className="flex items-center space-x-2">
             <FontAwesomeIcon icon={faTerminal} className="text-primary mr-2" />
             <div className="text-sm font-medium text-white">ReLum 安全实验终端</div>
-            
+
             {/* Shell控制按钮 */}
             {isConnecting ? (
               <div className="ml-4 bg-yellow-600 text-white text-xs px-2 py-1 rounded flex items-center">
@@ -627,7 +472,7 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
                 正在连接...
               </div>
             ) : shellActive ? (
-              <button 
+              <button
                 className="ml-4 bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded flex items-center"
                 onClick={disconnectShell}
               >
@@ -635,7 +480,7 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
                 断开Shell
               </button>
             ) : (
-              <button 
+              <button
                 className="ml-4 bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded flex items-center"
                 onClick={connectShell}
               >
@@ -643,7 +488,7 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
                 连接Shell
               </button>
             )}
-            
+
             {shellActive && (
               <div className="ml-2 flex items-center">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse mr-1"></div>
@@ -652,14 +497,14 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
             )}
           </div>
           <div className="flex items-center space-x-2">
-            <button 
+            <button
               className="text-gray-400 hover:text-white"
               onClick={toggleFloatingMode}
               title="固定到底部"
             >
               <FontAwesomeIcon icon={faWindowRestore} />
             </button>
-            <button 
+            <button
               className="text-gray-400 hover:text-white"
               onClick={() => setShowTerminal(false)}
               title="关闭终端"
@@ -668,9 +513,9 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
             </button>
           </div>
         </div>
-        
+
         {/* 终端内容区域 */}
-        <div 
+        <div
           className="flex-1 p-3 overflow-y-auto font-mono text-sm text-gray-300 bg-[#1E1E1E]"
           onClick={handleTerminalClick}
         >
@@ -706,23 +551,23 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
 
   // 正常底部终端
   return (
-    <div 
-      className={`fixed bottom-0 left-0 right-0 bg-[#1E1E1E] shadow-lg transition-all duration-300 z-30 ${showTerminal ? '' : 'h-0'} overflow-hidden flex flex-col`} 
+    <div
+      className={`fixed bottom-0 left-0 right-0 bg-[#1E1E1E] shadow-lg transition-all duration-300 z-30 ${showTerminal ? '' : 'h-0'} overflow-hidden flex flex-col`}
       style={{ height: showTerminal ? `${terminalHeight}px` : '0px' }}
     >
       {/* 拖拽手柄 */}
-      <div 
+      <div
         className="absolute top-0 left-0 right-0 h-1 bg-primary cursor-ns-resize z-10 flex justify-center items-center"
         onMouseDown={handleDragStart}
       >
         <div className="w-20 h-1 bg-primary rounded-full"></div>
       </div>
-      
+
       <div className="flex items-center justify-between bg-[#2D2D2D] p-2 border-b border-[#444]">
         <div className="flex items-center space-x-2">
           <div className="text-sm font-medium text-white">ReLum 安全实验终端</div>
           <FontAwesomeIcon icon={faGripLines} className="text-gray-500 ml-2 cursor-move" onMouseDown={handleDragStart} />
-          
+
           {/* Shell控制按钮 */}
           {isConnecting ? (
             <div className="ml-4 bg-yellow-600 text-white text-xs px-2 py-1 rounded flex items-center">
@@ -730,7 +575,7 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
               正在连接...
             </div>
           ) : shellActive ? (
-            <button 
+            <button
               className="ml-4 bg-red-600 hover:bg-red-700 text-white text-xs px-2 py-1 rounded flex items-center"
               onClick={disconnectShell}
             >
@@ -738,7 +583,7 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
               断开Shell
             </button>
           ) : (
-            <button 
+            <button
               className="ml-4 bg-green-600 hover:bg-green-700 text-white text-xs px-2 py-1 rounded flex items-center"
               onClick={connectShell}
             >
@@ -746,7 +591,7 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
               连接Shell
             </button>
           )}
-          
+
           {shellActive && (
             <div className="ml-2 flex items-center">
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse mr-1"></div>
@@ -756,20 +601,20 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
         </div>
         <div className="flex items-center space-x-2">
           {/* 新增悬浮模式按钮 */}
-          <button 
+          <button
             className="text-gray-400 hover:text-white"
             onClick={toggleFloatingMode}
             title="弹出终端"
           >
             <FontAwesomeIcon icon={faExpand} />
           </button>
-          <button 
+          <button
             className="text-gray-400 hover:text-white"
             onClick={() => setShowTerminal(prev => !prev)}
           >
             <FontAwesomeIcon icon={showTerminal ? faChevronDown : faChevronUp} />
           </button>
-          <button 
+          <button
             className="text-gray-400 hover:text-white"
             onClick={() => setShowTerminal(false)}
           >
@@ -777,8 +622,8 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
           </button>
         </div>
       </div>
-      
-      <div 
+
+      <div
         className="flex-1 p-3 overflow-y-auto font-mono text-sm text-gray-300 bg-[#1E1E1E]"
         onClick={handleTerminalClick}
       >
@@ -820,17 +665,17 @@ export default function TerminalFeature() {
   const [isDraggingAIChat, setIsDraggingAIChat] = useState(false);
   const dragStartPos = useRef({ x: 0, y: 0 });
   const startPos = useRef({ right: 0, top: 0 });
-  
+
   // 切换终端显示
   const toggleTerminal = () => {
     setShowTerminal(prev => !prev);
   };
-  
+
   // 切换AI对话显示
   const toggleAIChat = () => {
     setShowAIChat(prev => !prev);
   };
-  
+
   // 处理AI对话框拖拽
   const handleAIChatDragStart = (e) => {
     e.preventDefault();
@@ -838,49 +683,49 @@ export default function TerminalFeature() {
     dragStartPos.current = { x: e.clientX, y: e.clientY };
     startPos.current = { ...aiChatPosition };
   };
-  
+
   // 处理拖拽移动
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (isDraggingAIChat) {
         const deltaX = dragStartPos.current.x - e.clientX;
         const deltaY = e.clientY - dragStartPos.current.y;
-        
+
         // 计算新位置，确保不超出屏幕
         const newRight = Math.max(10, Math.min(window.innerWidth - 100, startPos.current.right + deltaX));
         const newTop = Math.max(10, Math.min(window.innerHeight - 200, startPos.current.top + deltaY));
-        
+
         setAiChatPosition({ right: newRight, top: newTop });
       }
     };
-    
+
     const handleMouseUp = () => {
       setIsDraggingAIChat(false);
     };
-    
+
     if (isDraggingAIChat) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
     }
-    
+
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [isDraggingAIChat]);
-  
+
   return (
     <>
       <FloatingTools onToggleTerminal={toggleTerminal} onToggleAIChat={toggleAIChat} />
       <TerminalPanel showTerminal={showTerminal} setShowTerminal={setShowTerminal} />
       {showAIChat && (
-        <AIChat 
-          showAIChat={showAIChat} 
-          setShowAIChat={setShowAIChat} 
+        <AIChat
+          showAIChat={showAIChat}
+          setShowAIChat={setShowAIChat}
           position={aiChatPosition}
           onDragStart={handleAIChatDragStart}
         />
       )}
     </>
   );
-} 
+}

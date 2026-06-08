@@ -1,10 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faFlask, 
+import {
   faGraduationCap,
-  faCode, 
+  faCode,
   faExchangeAlt,
   faTerminal,
   faLock,
@@ -27,7 +26,7 @@ function PracticeCard({ title, description, difficulty, time, category, icon, ta
       default: return 'bg-gray-500/20 text-gray-400';
     }
   };
-  
+
   const getStatusColor = () => {
     switch (status) {
       case '已完成': return 'bg-green-500/20 text-green-400';
@@ -51,7 +50,7 @@ function PracticeCard({ title, description, difficulty, time, category, icon, ta
       </div>
       <h3 className="text-lg font-semibold mb-2">{title}</h3>
       <p className="text-gray-400 text-sm mb-4">{description}</p>
-      
+
       <div className="flex flex-wrap gap-2 mb-4">
         {tags.map((tag, index) => (
           <span key={index} className="bg-[#3A3A3A] text-gray-300 px-2 py-1 rounded text-xs">
@@ -59,7 +58,7 @@ function PracticeCard({ title, description, difficulty, time, category, icon, ta
           </span>
         ))}
       </div>
-      
+
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <span className={`px-2 py-1 rounded-full text-xs ${getDifficultyColor()}`}>
@@ -168,15 +167,15 @@ function Practice() {
       status: "热门"
     }
   ];
-  
+
   return (
     <main className="max-w-7xl mx-auto px-4 py-8 relative">
       <TerminalFeature />
-      
+
       <div className="bg-[#222222] rounded-lg p-6">
         <h1 className="text-3xl font-bold mb-4">安全综合训练</h1>
         <p className="text-gray-400 mb-6">这些综合训练模拟企业真实安全场景，整合多种漏洞利用技术，帮助您提升实际渗透测试和安全评估能力。</p>
-        
+
         <div>
           <div className="flex justify-between items-center mb-4">
             <Link to="/knowledge" className="text-primary text-sm hover:text-primary/90">
@@ -184,7 +183,7 @@ function Practice() {
               查看学习资料
             </Link>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {comprehensivePractices.map((practice, index) => (
               <PracticeCard key={index} {...practice} />
@@ -196,4 +195,4 @@ function Practice() {
   );
 }
 
-export default Practice; 
+export default Practice;
