@@ -440,11 +440,33 @@ server.listen(PORT, () => {
   logger.info(`服务器运行在端口 ${PORT}`);
 });
 
-// 处理进程终止
-process.on('SIGINT', () => {
-  logger.info('正在关闭服务器...');
+let isShuttingDown = false;
+
+const shutdown = (signal) => {
+  if (isShuttingDown) {
+    return;
+  }
+
+  isShuttingDown = true;
+  logger.info(`收到${signal}信号，正在关闭服务器...`);
+
+  wss.clients.forEach((client) => {
+    client.close(1001, 'Server shutting down');
+  });
+
+  const forceExitTimer = setTimeout(() => {
+    logger.error('服务器关闭超时，强制退出');
+    process.exit(1);
+  }, 5000);
+  forceExitTimer.unref();
+
   server.close(() => {
+    clearTimeout(forceExitTimer);
     logger.info('服务器已关闭');
     process.exit(0);
   });
-});
+};
+
+// 处理进程终止
+process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
