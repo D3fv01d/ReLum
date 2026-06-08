@@ -23,11 +23,35 @@ logger.info(`服务运行于${isRunningInDocker ? 'Docker' : '本地'}环境`);
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '1mb';
+const allowedOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
+const isOriginAllowed = (origin) => {
+  if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes('*')) {
+    return true;
+  }
+
+  return allowedOrigins.includes(origin);
+};
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (isOriginAllowed(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(null, false);
+  },
+};
 
 // 安全增强中间件
 app.use(helmet());
-app.use(cors());
-app.use(express.json());
+app.use(cors(corsOptions));
+app.use(express.json({ limit: JSON_BODY_LIMIT }));
 
 // 健康检查路由
 app.get('/api/health', (req, res) => {
@@ -172,6 +196,14 @@ const wss = new WebSocket.Server({ server, path: '/api/shell' });
 // WebSocket连接处理
 wss.on('connection', (ws, req) => {
   const ip = req.socket.remoteAddress;
+  const origin = req.headers.origin;
+
+  if (!isOriginAllowed(origin)) {
+    logger.security(`拒绝WebSocket来源: ${origin || 'unknown'}`, 'anonymous', ip);
+    ws.close(1008, 'Origin not allowed');
+    return;
+  }
+
   logger.info(`新的WebSocket连接来自: ${ip}`);
 
   // 添加调试信息
