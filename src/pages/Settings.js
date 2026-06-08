@@ -13,6 +13,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import deepseekConfig from '../config/ai';
 import aiService from '../services/aiService';
+import { buildSafeAiConfig, loadSavedAiConfig, persistAiConfig } from '../services/aiConfigStorage';
 import TargetSettings from '../components/TargetSettings';
 
 const buildConfigFromForm = (formData) => ({
@@ -27,18 +28,20 @@ const buildConfigFromForm = (formData) => ({
   },
 });
 
+const buildFormDataFromConfig = (config) => ({
+  apiKey: config.apiKey || '',
+  apiUrl: config.apiUrl || '',
+  model: config.model || '',
+  systemPrompt: config.systemPrompt || '',
+  temperature: config.parameters?.temperature?.toString() || '0.7',
+  max_tokens: config.parameters?.max_tokens?.toString() || '1000',
+  top_p: config.parameters?.top_p?.toString() || '0.95',
+});
+
 // 设置页面组件
 function Settings() {
   // 状态变量
-  const [formData, setFormData] = useState({
-    apiKey: deepseekConfig.apiKey || '',
-    apiUrl: deepseekConfig.apiUrl || '',
-    model: deepseekConfig.model || '',
-    systemPrompt: deepseekConfig.systemPrompt || '',
-    temperature: deepseekConfig.parameters?.temperature?.toString() || '0.7',
-    max_tokens: deepseekConfig.parameters?.max_tokens?.toString() || '1000',
-    top_p: deepseekConfig.parameters?.top_p?.toString() || '0.95',
-  });
+  const [formData, setFormData] = useState(buildFormDataFromConfig(deepseekConfig));
 
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
@@ -65,13 +68,11 @@ function Settings() {
     setIsSaving(true);
 
     try {
-      const nextConfig = buildConfigFromForm(formData);
+      const nextConfig = persistAiConfig(buildConfigFromForm(formData), deepseekConfig);
 
       // 更新配置对象
       Object.assign(deepseekConfig, nextConfig);
-
-      // 保存到本地存储
-      localStorage.setItem('deepseekConfig', JSON.stringify(deepseekConfig));
+      setFormData(buildFormDataFromConfig(nextConfig));
 
       setSaveResult({
         success: true,
@@ -95,15 +96,7 @@ function Settings() {
 
   // 重置表单
   const handleReset = () => {
-    setFormData({
-      apiKey: deepseekConfig.apiKey || '',
-      apiUrl: deepseekConfig.apiUrl || '',
-      model: deepseekConfig.model || '',
-      systemPrompt: deepseekConfig.systemPrompt || '',
-      temperature: deepseekConfig.parameters?.temperature?.toString() || '0.7',
-      max_tokens: deepseekConfig.parameters?.max_tokens?.toString() || '1000',
-      top_p: deepseekConfig.parameters?.top_p?.toString() || '0.95',
-    });
+    setFormData(buildFormDataFromConfig(deepseekConfig));
     setTestResult(null);
     setSaveResult(null);
   };
@@ -115,7 +108,7 @@ function Settings() {
 
     try {
       // 测试连接
-      const success = await aiService.testConnection(buildConfigFromForm(formData));
+      const success = await aiService.testConnection(buildSafeAiConfig(buildConfigFromForm(formData), deepseekConfig));
 
       if (success) {
         setTestResult({
@@ -142,27 +135,11 @@ function Settings() {
 
   // 从本地存储加载配置
   useEffect(() => {
-    const savedConfig = localStorage.getItem('deepseekConfig');
+    const savedConfig = loadSavedAiConfig(deepseekConfig);
     if (savedConfig) {
-      try {
-        const parsedConfig = JSON.parse(savedConfig);
-
-        // 更新内存中的配置对象
-        Object.assign(deepseekConfig, parsedConfig);
-
-        // 更新表单状态
-        setFormData({
-          apiKey: parsedConfig.apiKey || '',
-          apiUrl: parsedConfig.apiUrl || '',
-          model: parsedConfig.model || '',
-          systemPrompt: parsedConfig.systemPrompt || '',
-          temperature: parsedConfig.parameters?.temperature?.toString() || '0.7',
-          max_tokens: parsedConfig.parameters?.max_tokens?.toString() || '1000',
-          top_p: parsedConfig.parameters?.top_p?.toString() || '0.95',
-        });
-      } catch (error) {
-        console.error('加载保存的配置失败:', error);
-      }
+      // 更新内存中的配置对象
+      Object.assign(deepseekConfig, savedConfig);
+      setFormData(buildFormDataFromConfig(savedConfig));
     }
   }, []);
 

@@ -2,21 +2,10 @@
  * AI 服务 - 处理与DeepSeek API的通信
  */
 import deepseekConfig from '../config/ai';
-
-const SAVED_CONFIG_KEY = 'deepseekConfig';
-
-const getSavedConfig = () => {
-  try {
-    const savedConfig = localStorage.getItem(SAVED_CONFIG_KEY);
-    return savedConfig ? JSON.parse(savedConfig) : null;
-  } catch (error) {
-    console.error('读取AI配置失败:', error);
-    return null;
-  }
-};
+import { buildSafeAiConfig, loadSavedAiConfig } from './aiConfigStorage';
 
 const getActiveConfig = (configOverride = null) => {
-  const savedConfig = getSavedConfig();
+  const savedConfig = loadSavedAiConfig(deepseekConfig);
   const mergedConfig = savedConfig
     ? {
         ...deepseekConfig,
@@ -32,14 +21,14 @@ const getActiveConfig = (configOverride = null) => {
     return mergedConfig;
   }
 
-  return {
+  return buildSafeAiConfig({
     ...mergedConfig,
     ...configOverride,
     parameters: {
       ...mergedConfig.parameters,
       ...configOverride.parameters,
     },
-  };
+  }, mergedConfig);
 };
 
 class AIService {
