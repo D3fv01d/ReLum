@@ -23,6 +23,8 @@ const shellService = isRunningInDocker
 logger.info(`服务运行于${isRunningInDocker ? 'Docker' : '本地'}环境`);
 
 const app = express();
+app.disable('x-powered-by');
+
 const PORT = process.env.PORT || 8080;
 const JSON_BODY_LIMIT = process.env.JSON_BODY_LIMIT || '1mb';
 const SHELL_COMMAND_MAX_LENGTH = Number.parseInt(process.env.SHELL_COMMAND_MAX_LENGTH, 10) || 2000;
