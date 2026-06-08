@@ -253,7 +253,7 @@ const getInstalledImages = async () => {
       images,
     };
   } catch (error) {
-    console.error('获取已安装镜像失败:', error);
+    console.warn('获取已安装镜像失败:', error);
     return { error: true, message: `获取失败: ${error.message}`, images: [] };
   }
 };
@@ -262,7 +262,7 @@ const checkDockerInstalled = async () => {
   try {
     return await requestJson('/target/check-docker');
   } catch (error) {
-    console.error('检查Docker安装状态失败:', error);
+    console.warn('检查Docker安装状态失败:', error);
 
     if (error.message.includes('JSON')) {
       return {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faDownload,
@@ -24,7 +24,7 @@ const TargetSettings = () => {
   const [activeTab, setActiveTab] = useState('status');
 
   // 计算统计信息
-  const getStats = () => {
+  const stats = useMemo(() => {
     // 计算环境总数量
     let totalEnvironments = 0;
     let totalSize = 0;
@@ -49,10 +49,10 @@ const TargetSettings = () => {
       installedSize,
       installPercent: totalEnvironments ? Math.round((installedCount / totalEnvironments) * 100) : 0
     };
-  };
+  }, [installedImages.length]);
 
   // 检查Docker安装状态
-  const checkDocker = async () => {
+  const checkDocker = useCallback(async () => {
     setLoading(true);
     setDockerError(null);
 
@@ -68,19 +68,19 @@ const TargetSettings = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // 获取已安装的镜像
-  const fetchInstalledImages = async () => {
+  const fetchInstalledImages = useCallback(async () => {
     try {
       const result = await getInstalledImages();
       if (result.images) {
         setInstalledImages(result.images);
       }
     } catch (error) {
-      console.error('获取已安装镜像失败:', error);
+      console.warn('获取已安装镜像失败:', error);
     }
-  };
+  }, []);
 
   // 安装默认靶场环境
   const handleInstallDefaults = async () => {
@@ -92,7 +92,10 @@ const TargetSettings = () => {
       setInstallResult(result);
 
       // 刷新已安装镜像列表
-      await fetchInstalledImages();
+      await Promise.all([
+        checkDocker(),
+        fetchInstalledImages()
+      ]);
     } catch (error) {
       setInstallResult({
         error: true,
@@ -105,21 +108,23 @@ const TargetSettings = () => {
 
   // 刷新状态
   const handleRefresh = async () => {
-    await checkDocker();
-    await fetchInstalledImages();
+    await Promise.all([
+      checkDocker(),
+      fetchInstalledImages()
+    ]);
   };
 
   // 初始化
   useEffect(() => {
     const init = async () => {
-      await checkDocker();
-      await fetchInstalledImages();
+      await Promise.all([
+        checkDocker(),
+        fetchInstalledImages()
+      ]);
     };
 
     init();
-  }, []);
-
-  const stats = getStats();
+  }, [checkDocker, fetchInstalledImages]);
 
   return (
     <div className="bg-gray-800 rounded-lg shadow-lg p-6">

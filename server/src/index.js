@@ -136,7 +136,7 @@ app.get('/api/target/images', async (req, res) => {
     const images = await dockerService.getInstalledImages();
     res.status(200).json({ images });
   } catch (error) {
-    logger.error(`获取已安装镜像失败: ${error.message}`);
+    logger.warn(`获取已安装镜像失败: ${error.message}`);
     res.status(500).json({ error: true, message: error.message, images: [] });
   }
 });
@@ -147,7 +147,7 @@ app.get('/api/target/containers', async (req, res) => {
     const containers = await dockerService.getRunningContainers();
     res.status(200).json({ containers });
   } catch (error) {
-    logger.error(`获取运行中容器失败: ${error.message}`);
+    logger.warn(`获取运行中容器失败: ${error.message}`);
     res.status(500).json({ error: true, message: error.message, containers: [] });
   }
 });

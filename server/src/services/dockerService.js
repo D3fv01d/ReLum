@@ -107,7 +107,7 @@ const checkDockerInstalled = async () => {
 
     return { installed: true, version: clientVersion };
   } catch (infoError) {
-    logger.error(`Docker客户端无法连接到守护进程: ${infoError.message}`);
+    logger.warn(`Docker客户端无法连接到守护进程: ${infoError.message}`);
     logger.info('尝试使用显式DOCKER_HOST环境变量重试连接');
 
     try {
@@ -121,7 +121,7 @@ const checkDockerInstalled = async () => {
       logger.info('使用显式套接字路径成功连接到Docker守护进程');
       return { installed: true, version: clientVersion, socketTest: '使用显式套接字成功' };
     } catch (altError) {
-      logger.error(`使用显式套接字路径仍然无法连接: ${altError.message}`);
+      logger.warn(`使用显式套接字路径仍然无法连接: ${altError.message}`);
       return {
         installed: false,
         message: '找到Docker客户端但无法连接到Docker守护进程，请确保Docker服务正在运行，并且已正确挂载Docker套接字',
@@ -773,7 +773,7 @@ const getInstalledImages = async () => {
         };
       });
   } catch (error) {
-    logger.error(`获取镜像列表失败: ${error.message}`);
+    logger.warn(`获取镜像列表失败: ${error.message}`);
     throw error;
   }
 };
@@ -811,7 +811,7 @@ const getRunningContainers = async () => {
       })
       .filter(container => container.isRelumContainer);
   } catch (error) {
-    logger.error(`获取容器列表失败: ${error.message}`);
+    logger.warn(`获取容器列表失败: ${error.message}`);
     throw error;
   }
 };
