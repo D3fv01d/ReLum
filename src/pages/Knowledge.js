@@ -4,17 +4,13 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSearch,
   faArrowRight,
-  faExternalLinkAlt,
-  faLayerGroup,
   faRoute,
 } from '@fortawesome/free-solid-svg-icons';
 import TerminalFeature from '../components/TerminalFeature';
 import knowledgeCategories from '../data/knowledgeCategories';
 import {
-  learningLabInsights,
   learningPathBlueprints,
-  layoutPrinciples,
-} from '../data/learningLabInsights';
+} from '../data/learningPaths';
 
 function Knowledge() {
   const [query, setQuery] = useState('');
@@ -49,7 +45,7 @@ function Knowledge() {
           <div>
             <h1 className="text-3xl font-bold mb-4">网络安全知识库</h1>
             <p className="max-w-3xl text-gray-400">
-              参考主流学习型靶场的路径、模块、任务和调查式排版方式，按“路线、章节、实验、验收、防护”组织学习材料。
+              按学习路线和知识分类组织内容，配合章节目录、实操教程和靶场实验逐步推进。
             </p>
           </div>
 
@@ -104,60 +100,6 @@ function Knowledge() {
         </div>
       </section>
 
-      <section className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div>
-          <div className="mb-4 flex items-center justify-between gap-4">
-            <h2 className="flex items-center text-xl font-semibold">
-              <FontAwesomeIcon icon={faLayerGroup} className="mr-2 text-primary" />
-              靶场学习模式参考
-            </h2>
-            <span className="text-sm text-gray-500">{learningLabInsights.length} 个来源</span>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            {learningLabInsights.slice(0, 6).map((lab) => (
-              <article key={lab.name} className="rounded-lg border border-[#333] bg-[#222222] p-4">
-                <div className="mb-2 flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold">{lab.name}</h3>
-                    <p className="mt-1 text-xs text-primary">{lab.focus}</p>
-                  </div>
-                  <a
-                    href={lab.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="shrink-0 text-gray-500 transition-colors hover:text-primary"
-                    aria-label={`打开 ${lab.name}`}
-                  >
-                    <FontAwesomeIcon icon={faExternalLinkAlt} />
-                  </a>
-                </div>
-                <p className="mb-3 text-sm leading-6 text-gray-400">{lab.pattern}</p>
-                <ul className="space-y-1 text-xs text-gray-500">
-                  {lab.takeaways.map(item => (
-                    <li key={item}>- {item}</li>
-                  ))}
-                </ul>
-              </article>
-            ))}
-          </div>
-        </div>
-
-        <aside className="rounded-lg border border-[#333] bg-[#222222] p-5">
-          <h2 className="mb-3 text-lg font-semibold">排版原则</h2>
-          <ol className="space-y-3 text-sm leading-6 text-gray-300">
-            {layoutPrinciples.map((principle, index) => (
-              <li key={principle} className="flex gap-3">
-                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded bg-primary/15 text-xs text-primary">
-                  {index + 1}
-                </span>
-                <span>{principle}</span>
-              </li>
-            ))}
-          </ol>
-        </aside>
-      </section>
-
       <section>
         <div className="mb-4 flex items-center justify-between text-sm text-gray-400">
           <span>共 {knowledgeCategories.length} 类知识，当前显示 {filteredCategories.length} 类</span>
@@ -171,23 +113,23 @@ function Knowledge() {
         {filteredCategories.length > 0 ? (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
             {filteredCategories.map((category) => (
-            <Link
-              to={`/knowledge/${category.id}`}
-              key={category.id}
-              className="block rounded-lg border border-[#333] bg-[#222222] p-5 transition-colors duration-200 hover:border-primary/60 hover:bg-[#282828]"
-            >
-              <div className="flex justify-between items-start">
-                <FontAwesomeIcon icon={category.icon} className="text-primary text-2xl mb-3" />
-                <FontAwesomeIcon icon={faArrowRight} className="text-gray-500 text-sm" />
-              </div>
-              <h2 className="text-xl font-semibold mb-2">{category.title}</h2>
-              <p className="text-gray-400 mb-4">{category.description}</p>
-              <ul className="text-sm text-gray-400 space-y-1 ml-4 list-disc">
-                {category.items.map((item, index) => (
-                  <li key={index}>{item}</li>
-                ))}
-              </ul>
-            </Link>
+              <Link
+                to={`/knowledge/${category.id}`}
+                key={category.id}
+                className="block rounded-lg border border-[#333] bg-[#222222] p-5 transition-colors duration-200 hover:border-primary/60 hover:bg-[#282828]"
+              >
+                <div className="flex justify-between items-start">
+                  <FontAwesomeIcon icon={category.icon} className="text-primary text-2xl mb-3" />
+                  <FontAwesomeIcon icon={faArrowRight} className="text-gray-500 text-sm" />
+                </div>
+                <h2 className="text-xl font-semibold mb-2">{category.title}</h2>
+                <p className="text-gray-400 mb-4">{category.description}</p>
+                <ul className="text-sm text-gray-400 space-y-1 ml-4 list-disc">
+                  {category.items.map((item, index) => (
+                    <li key={index}>{item}</li>
+                  ))}
+                </ul>
+              </Link>
             ))}
           </div>
         ) : (

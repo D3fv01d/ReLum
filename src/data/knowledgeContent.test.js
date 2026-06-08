@@ -1,6 +1,6 @@
 import knowledgeCategories from './knowledgeCategories';
 import knowledgeData from './knowledgeDetails';
-import { learningPathBlueprints } from './learningLabInsights';
+import { learningPathBlueprints } from './learningPaths';
 
 describe('knowledge content integrity', () => {
   test('every knowledge category has a populated detail page', () => {

@@ -56,7 +56,7 @@ ReLum是一个专业的网络安全学习和实践平台，提供全面的漏洞
 27. **蓝队调查与DFIR**：告警分诊、证据收集、遏制恢复、复盘改进
 28. **威胁狩猎与检测工程**：狩猎假设、KQL/Sigma/YARA、ATT&CK映射、误报调优
 
-学习型靶场调研和排版原则见 [学习型靶场调研与知识库扩展记录](docs/learning-lab-research.md)。
+开发调研记录见 [学习型靶场调研与知识库扩展记录](docs/learning-lab-research.md)。
 
 ## Shell实验环境
 
