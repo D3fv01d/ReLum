@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const logger = require('../utils/logger');
 
-const DOCKER_COMMAND_TIMEOUT = 10000;
+const DOCKER_COMMAND_TIMEOUT = Number.parseInt(process.env.DOCKER_COMMAND_TIMEOUT_MS, 10) || 10000;
 
 const runDockerCommand = (args, options = {}) => {
   return new Promise((resolve, reject) => {
