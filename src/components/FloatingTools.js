@@ -4,7 +4,7 @@ import { faBrain, faTerminal } from '@fortawesome/free-solid-svg-icons';
 
 function FloatingTools({ onToggleTerminal, onToggleAIChat }) {
   return (
-    <div className="fixed right-8 top-1/2 transform -translate-y-1/2 flex flex-col gap-4 z-10">
+    <div className="fixed bottom-6 right-4 z-10 flex flex-col gap-3 md:bottom-auto md:right-8 md:top-1/2 md:-translate-y-1/2 md:gap-4">
       <button
         className="bg-primary w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-primary/90 transition-all duration-200"
         onClick={onToggleTerminal}

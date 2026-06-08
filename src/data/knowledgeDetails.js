@@ -12,10 +12,38 @@ import {
   faLayerGroup,
   faGlobe,
   faHdd,
+  faKey,
+  faUserShield,
+  faShieldAlt,
+  faCloud,
+  faBug,
+  faNetworkWired,
+  faFingerprint,
+  faLock,
+  faUserSecret,
+  faSearch,
+  faCodeBranch,
+  faArchive,
 } from '@fortawesome/free-solid-svg-icons';
 
 const TEMPLATE_EXPRESSION_PREFIX = ['$', '{'].join('');
 const ESCAPED_TEMPLATE_EXPRESSION_PREFIX = '\\' + TEMPLATE_EXPRESSION_PREFIX;
+const createKnowledgeCategory = ({
+  title,
+  icon,
+  description,
+  sections,
+  protection,
+}) => ({
+  title,
+  icon,
+  description,
+  sections: sections.map(section => ({
+    difficulty: 'intermediate',
+    ...section,
+  })),
+  protection,
+});
 
 const knowledgeData = {
   'sql-injection': {
@@ -1116,7 +1144,455 @@ const knowledgeData = {
       '定期进行安全评估和渗透测试',
       '制定数据库安全策略和响应计划'
     ]
-  }
+  },
+  authentication: createKnowledgeCategory({
+    title: '认证与会话安全',
+    icon: faKey,
+    description: '认证与会话安全关注“用户是谁”和“会话是否可信”。学习重点包括登录流程、密码策略、多因素认证、账号恢复、会话生命周期和异常检测。',
+    sections: [
+      {
+        title: '弱口令与凭据填充',
+        content: '弱口令、默认账号和泄露凭据复用是认证攻击最常见的入口。授权靶场中应重点观察密码策略、登录失败处理、验证码触发条件和异常登录告警。',
+        examples: ['检查是否存在默认账号或演示账号', '观察连续失败登录后的锁定、延迟或验证码策略', '验证登录日志是否包含来源IP、账号、结果和时间'],
+        difficulty: 'beginner'
+      },
+      {
+        title: '多因素认证绕过',
+        content: 'MFA绕过通常发生在流程状态不一致、备用通道过弱、记住设备逻辑错误或后端接口缺少二次校验时。',
+        examples: ['比较登录前后接口是否都校验MFA状态', '检查备用验证码是否有次数、时效和重放限制', '确认敏感操作是否重新验证高可信身份'],
+        difficulty: 'intermediate'
+      },
+      {
+        title: '会话固定与Cookie安全',
+        content: '会话固定和Cookie配置错误会让攻击者借用或延长他人会话。重点关注登录后会话ID是否轮换、Cookie属性是否完整、退出后服务端会话是否失效。',
+        examples: ['登录成功后应重新签发Session ID', 'Cookie建议启用HttpOnly、Secure、SameSite', '退出登录后旧会话ID不应继续访问敏感接口'],
+        difficulty: 'intermediate'
+      },
+      {
+        title: '密码重置流程缺陷',
+        content: '账号恢复流程经常绕过主登录安全控制。需要验证重置Token随机性、时效、单次使用、账号枚举和通知机制。',
+        examples: ['重置Token应与用户、场景和过期时间绑定', '错误提示不应暴露账号是否存在', '修改密码后应撤销旧会话和旧Token'],
+        difficulty: 'advanced'
+      }
+    ],
+    protection: ['强密码与泄露凭据检测', '登录失败限速和异常告警', '关键流程强制MFA', '登录后轮换会话ID', 'Cookie启用HttpOnly/Secure/SameSite', '重置Token一次性、短时效、服务端存储校验']
+  }),
+  'access-control': createKnowledgeCategory({
+    title: '访问控制与越权',
+    icon: faUserShield,
+    description: '访问控制决定“用户能做什么”和“能访问哪些对象”。它比认证更容易被遗漏，尤其是对象级权限、功能级权限和多租户隔离。',
+    sections: [
+      {
+        title: 'IDOR水平越权',
+        content: 'IDOR发生在用户可通过修改对象ID访问同级用户资源。学习时应区分对象存在、对象归属和当前用户权限三件事。',
+        examples: ['订单、文件、消息、报告等对象接口都需要对象级鉴权', 'ID不可预测不能替代权限校验', '列表接口和详情接口都要校验归属'],
+        difficulty: 'beginner'
+      },
+      {
+        title: '垂直越权',
+        content: '垂直越权是普通用户访问管理员或高权限功能。常见原因是只隐藏前端入口，后端接口未做角色和能力校验。',
+        examples: ['直接访问管理接口应返回403而不是仅靠菜单隐藏', '管理员操作需要服务端校验角色、组织和动作', '权限变更需要审计日志'],
+        difficulty: 'intermediate'
+      },
+      {
+        title: '功能级授权缺失',
+        content: '功能级授权缺失发生在某类接口只校验登录态、不校验具体动作能力，例如导出、批量删除、审批、邀请成员。',
+        examples: ['为每个敏感动作建立权限点', '批量接口逐项校验对象权限', '服务端不要信任前端传入的role或isAdmin字段'],
+        difficulty: 'intermediate'
+      },
+      {
+        title: '多租户隔离失败',
+        content: 'SaaS和团队系统需要同时校验用户、组织、项目、资源和角色。缺少租户边界会导致跨团队数据泄露。',
+        examples: ['所有查询都带租户条件且由服务端上下文生成', '邀请链接、分享链接需要绑定租户和权限', '后台任务也要继承租户隔离规则'],
+        difficulty: 'advanced'
+      }
+    ],
+    protection: ['服务端统一授权中间件', '对象级鉴权覆盖读写删导出', '前端隐藏只作为体验优化', '多租户查询强制带租户上下文', '权限变更和越权失败写审计日志', '增加角色矩阵和回归测试']
+  }),
+  ssrf: createKnowledgeCategory({
+    title: '服务端请求伪造',
+    icon: faNetworkWired,
+    description: 'SSRF利用服务端代请求能力访问攻击者无法直接访问的内部资源。训练重点是识别出站请求点、内网边界、协议限制和云元数据保护。',
+    sections: [
+      {
+        title: '基础SSRF识别',
+        content: '图片抓取、Webhook、URL预览、文件导入、代理下载等功能都可能让服务端请求用户提供的URL。',
+        examples: ['记录服务端是否会访问用户提交的URL', '使用授权靶场中的回显服务确认请求来源', '区分浏览器请求和服务端请求'],
+        difficulty: 'beginner'
+      },
+      {
+        title: '内网资源访问',
+        content: '如果出站请求没有限制，服务端可能访问本机、内网管理面板或仅内部可达的服务。',
+        examples: ['禁止访问localhost、私有网段和链路本地地址', 'DNS解析后再校验最终IP', '限制端口、协议和重定向链路'],
+        difficulty: 'intermediate'
+      },
+      {
+        title: '云元数据保护',
+        content: '云环境中的元数据服务可能暴露临时凭证和实例信息。应通过网络策略、IMDSv2或等效机制降低风险。',
+        examples: ['阻断到元数据地址的非必要访问', '云凭证使用最小权限和短时效', '监控异常元数据访问'],
+        difficulty: 'advanced'
+      },
+      {
+        title: '协议与重定向绕过',
+        content: 'SSRF防护常被重定向、DNS重绑定、IPv6、编码地址或非HTTP协议绕过。修复时必须校验最终请求目标。',
+        examples: ['只允许http/https且禁止自动跟随不可信重定向', '解析域名后校验每一次连接IP', '维护业务域名白名单而不是黑名单'],
+        difficulty: 'advanced'
+      }
+    ],
+    protection: ['默认拒绝任意URL', '使用业务白名单和固定连接器', '解析后校验最终IP和端口', '阻断私有网段、localhost和云元数据地址', '限制重定向和协议', '记录出站请求审计日志']
+  }),
+  'api-security': createKnowledgeCategory({
+    title: 'API安全测试',
+    icon: faShieldAlt,
+    description: 'API安全覆盖对象级授权、批量操作、数据暴露、速率限制、GraphQL查询复杂度和错误处理。它适合按接口资产清单和风险标签来学习。',
+    sections: [
+      {
+        title: 'BOLA对象级授权',
+        content: 'BOLA是API中最常见的授权问题。接口应基于当前用户上下文校验每个对象，而不是只判断对象ID是否存在。',
+        examples: ['详情、更新、删除、导出接口都需要对象级权限', '批量接口逐项返回授权结果', '测试账号之间交叉验证对象归属'],
+        difficulty: 'beginner'
+      },
+      {
+        title: '批量赋值',
+        content: '批量赋值发生在服务端直接把请求体映射到模型，导致用户修改role、balance、ownerId等不该暴露的字段。',
+        examples: ['请求体字段使用显式白名单', '敏感字段由服务端计算', 'DTO和数据库模型分离'],
+        difficulty: 'intermediate'
+      },
+      {
+        title: 'GraphQL滥用',
+        content: 'GraphQL接口需要控制 introspection、查询深度、字段级权限和复杂度，否则可能造成数据过度暴露或资源耗尽。',
+        examples: ['生产环境按需关闭或保护introspection', '限制查询深度和复杂度', 'Resolver层执行字段级授权'],
+        difficulty: 'advanced'
+      },
+      {
+        title: '速率限制与错误信息',
+        content: '登录、验证码、搜索、导出、短信和AI调用等接口都需要配额控制。错误响应不应泄露内部栈、SQL、对象存在性或调试信息。',
+        examples: ['按用户、IP、租户和动作组合限速', '错误码稳定但不泄露敏感细节', '高成本接口增加队列和预算限制'],
+        difficulty: 'intermediate'
+      }
+    ],
+    protection: ['维护API资产清单', '对象级和功能级授权双重校验', '请求体字段白名单', 'GraphQL复杂度限制', '多维度速率限制', '统一错误响应和审计']
+  }),
+  deserialization: createKnowledgeCategory({
+    title: '反序列化与对象注入',
+    icon: faBug,
+    description: '不可信反序列化会把外部数据还原成可执行对象图，可能触发危险方法、模板、文件、网络或命令行为。',
+    sections: [
+      {
+        title: 'Java反序列化风险',
+        content: 'Java生态中对象流和第三方库组合可能形成危险调用链。学习重点是识别反序列化入口和依赖版本。',
+        examples: ['禁止反序列化不可信字节流', '使用JEP 290过滤器或等效白名单', '减少危险库和历史版本依赖'],
+        difficulty: 'advanced'
+      },
+      {
+        title: 'PHP对象注入',
+        content: 'PHP魔术方法可能在对象还原、销毁或字符串转换时触发副作用。风险常来自cookie、缓存、消息队列或隐藏字段。',
+        examples: ['不要对用户输入调用unserialize', '使用JSON等简单数据格式', '限制可反序列化类并校验签名'],
+        difficulty: 'advanced'
+      },
+      {
+        title: 'Python Pickle风险',
+        content: 'Pickle设计上可表达对象构造逻辑，不适合处理不可信数据。模型、任务队列和缓存场景尤其需要注意。',
+        examples: ['外部输入使用JSON、MessagePack安全子集', '模型文件从可信来源加载', '对任务消息进行签名和来源校验'],
+        difficulty: 'intermediate'
+      },
+      {
+        title: '签名与版本控制',
+        content: '即使必须使用序列化，也要给数据加签、绑定用途、设置版本和过期时间，防止重放和跨场景复用。',
+        examples: ['签名覆盖payload、用途、用户和过期时间', '密钥轮换并保留短期兼容窗口', '失败原因不回显内部解析细节'],
+        difficulty: 'intermediate'
+      }
+    ],
+    protection: ['不反序列化不可信数据', '优先使用简单数据格式', '可反序列化类型白名单', '签名绑定用途和时效', '升级危险依赖', '对解析失败和异常行为告警']
+  }),
+  'jwt-oauth': createKnowledgeCategory({
+    title: 'JWT与OAuth安全',
+    icon: faFingerprint,
+    description: 'JWT和OAuth安全关注令牌可信度、签名算法、授权码流程、重定向URI、Scope和生命周期控制。',
+    sections: [
+      {
+        title: 'JWT算法与签名校验',
+        content: 'JWT必须固定允许的算法并校验签名、issuer、audience、过期时间和用途。不要让令牌头部决定服务端信任策略。',
+        examples: ['服务端固定算法白名单', '校验iss、aud、exp、nbf', '拒绝none算法和未知kid'],
+        difficulty: 'intermediate'
+      },
+      {
+        title: '弱密钥与密钥轮换',
+        content: 'HMAC弱密钥、密钥泄露和长期不轮换会让令牌失去可信度。密钥管理应接入KMS或专用密钥配置。',
+        examples: ['使用高熵密钥或非对称密钥', 'kid只用于选择可信密钥', '轮换时缩短旧令牌有效期'],
+        difficulty: 'intermediate'
+      },
+      {
+        title: 'OAuth重定向风险',
+        content: 'OAuth授权码流程需要严格校验redirect_uri、state和PKCE。开放重定向会导致授权码或令牌流向错误站点。',
+        examples: ['redirect_uri精确匹配而不是前缀匹配', 'state绑定浏览器会话', '公开客户端使用PKCE'],
+        difficulty: 'advanced'
+      },
+      {
+        title: 'Scope与Token生命周期',
+        content: 'Scope过宽、刷新令牌长期有效、注销不撤销令牌都会扩大影响面。应最小化权限并记录授权事件。',
+        examples: ['不同客户端使用不同scope', '刷新令牌轮换和重放检测', '权限变更后撤销相关令牌'],
+        difficulty: 'intermediate'
+      }
+    ],
+    protection: ['固定JWT算法和密钥来源', '完整校验标准声明', 'redirect_uri精确白名单', '启用PKCE和state', 'Scope最小化', '刷新令牌轮换和撤销']
+  }),
+  'cloud-container': createKnowledgeCategory({
+    title: '云原生与容器安全',
+    icon: faCloud,
+    description: '云原生安全覆盖镜像、容器运行时、Kubernetes、IAM、元数据、网络策略和CI/CD供应链。学习时应把环境边界和权限链路画清楚。',
+    sections: [
+      {
+        title: '镜像与密钥泄露',
+        content: '镜像层、构建日志、环境变量和仓库历史中常出现凭据。训练重点是识别密钥位置、清理历史和建立扫描流程。',
+        examples: ['构建阶段使用secret mount而不是写入镜像层', '镜像发布前扫描密钥和高危依赖', '运行时密钥来自专用Secret管理'],
+        difficulty: 'beginner'
+      },
+      {
+        title: '容器运行时隔离',
+        content: '危险挂载、特权容器、宿主机命名空间共享和过宽Capabilities都会削弱隔离。',
+        examples: ['禁止privileged和宿主机敏感目录挂载', '丢弃不必要Capabilities', '使用只读根文件系统和非root用户'],
+        difficulty: 'intermediate'
+      },
+      {
+        title: 'Kubernetes RBAC',
+        content: 'Kubernetes风险常来自过宽ServiceAccount、默认Token挂载、Dashboard暴露和集群角色滥用。',
+        examples: ['ServiceAccount按工作负载最小授权', '不需要API访问时关闭Token自动挂载', '审计高危动词如create pods/exec/secrets'],
+        difficulty: 'advanced'
+      },
+      {
+        title: 'CI/CD供应链',
+        content: '流水线拥有发布权限，依赖投毒、脚本篡改、令牌泄露和制品替换都会影响生产环境。',
+        examples: ['固定依赖版本并校验锁文件', '流水线令牌短时效和最小权限', '制品签名与部署前校验'],
+        difficulty: 'advanced'
+      }
+    ],
+    protection: ['镜像和依赖持续扫描', '容器默认非root和最小Capabilities', 'Kubernetes RBAC最小权限', 'NetworkPolicy限制东西向访问', 'CI/CD密钥隔离和制品签名', '云IAM按工作负载拆分']
+  }),
+  'cve-reproduction': createKnowledgeCategory({
+    title: 'CVE复现与漏洞研究',
+    icon: faBug,
+    description: 'CVE复现训练关注版本、补丁、配置、触发条件、影响面和修复验证。适合参考Vulhub一类可复现环境，但要保持授权和隔离。',
+    sections: [
+      {
+        title: '环境复现方法',
+        content: '复现真实漏洞时，先锁定受影响版本、运行参数、依赖和网络暴露面，避免把环境差异误判为漏洞不存在。',
+        examples: ['记录镜像版本、配置文件、端口和依赖', '使用Docker/虚拟机隔离复现环境', '复现后及时清理容器和数据卷'],
+        difficulty: 'beginner'
+      },
+      {
+        title: '补丁对比',
+        content: '补丁对比能帮助理解根因。重点观察输入校验、权限校验、解析逻辑、依赖升级和默认配置变化。',
+        examples: ['比较修复前后关键函数和配置', '把变化归类为校验、鉴权、编码或隔离', '从补丁反推检测点'],
+        difficulty: 'advanced'
+      },
+      {
+        title: '影响面评估',
+        content: '影响面不只看CVE评分，还要结合资产暴露、前置条件、权限级别、数据敏感性和可检测性。',
+        examples: ['列出受影响资产版本', '区分公网、内网、认证后和本地前置条件', '给出临时缓解和永久修复优先级'],
+        difficulty: 'intermediate'
+      },
+      {
+        title: '检测规则验证',
+        content: '复现环境可以为WAF、IDS、日志规则和资产扫描提供真阳性样本。规则应同时验证误报和漏报。',
+        examples: ['记录触发日志字段和网络特征', '使用无害样本验证规则链路', '保留修复后阴性样本用于回归'],
+        difficulty: 'advanced'
+      }
+    ],
+    protection: ['复现环境隔离运行', '不连接生产凭证和真实数据', '记录版本与配置', '输出可复现报告', '补丁和临时缓解同时验证', '检测规则保留正负样本']
+  }),
+  'linux-wargame': createKnowledgeCategory({
+    title: 'Linux与CTF基础',
+    icon: faLock,
+    description: 'Linux与CTF基础参考关卡式靶场的学习方式，先训练Shell、文件、权限、编码、网络和笔记习惯，再进入复杂漏洞。',
+    sections: [
+      {
+        title: 'Shell与文件导航',
+        content: '初学者应熟悉pwd、ls、cd、cat、less、find、grep等基础命令，理解路径、隐藏文件和命令帮助。',
+        examples: ['使用man和--help补全未知参数', '用find定位文件类型和权限', '把每关用到的命令写成笔记'],
+        difficulty: 'beginner'
+      },
+      {
+        title: '权限与用户上下文',
+        content: 'CTF关卡常通过文件权限、属主、SUID、环境变量和进程上下文训练最小权限理解。',
+        examples: ['用id、ls -l、stat观察权限', '区分读、写、执行对文件和目录的含义', '避免在真实系统尝试提权技巧'],
+        difficulty: 'beginner'
+      },
+      {
+        title: '管道、重定向与文本处理',
+        content: '管道思维能把复杂任务拆成多个小命令，适合处理日志、编码、字典和输出过滤。',
+        examples: ['grep、sort、uniq、cut、awk组合分析文本', '使用重定向保存中间结果', '逐步验证每个管道阶段输出'],
+        difficulty: 'intermediate'
+      },
+      {
+        title: '关卡式笔记法',
+        content: '学习型靶场的核心不是收集flag，而是沉淀方法。每关记录目标、线索、命令、失败尝试和复盘。',
+        examples: ['记录“为什么尝试这个命令”', '把失败路径也写入笔记', '用标签标注编码、权限、网络、Web等知识点'],
+        difficulty: 'beginner'
+      }
+    ],
+    protection: ['仅在授权靶场练习', '命令执行前确认目标路径', '保留学习笔记和复盘', '优先理解原理而不是复制答案', '使用隔离用户和临时环境', '避免把CTF技巧直接迁移到生产系统']
+  }),
+  cryptography: createKnowledgeCategory({
+    title: '密码学与编码',
+    icon: faKey,
+    description: '密码学与编码训练帮助学习者区分编码、哈希、加密、签名和密钥管理。CTF中常见短题适合作为入门阶梯。',
+    sections: [
+      {
+        title: '编码与表示',
+        content: 'Base64、URL编码、Hex、Unicode等只是表示方式，不提供保密性。学习时先判断数据是编码、压缩、序列化还是加密。',
+        examples: ['观察字符集和长度判断可能的编码', '多层编码逐层还原并记录顺序', '不要把Base64当作加密方案'],
+        difficulty: 'beginner'
+      },
+      {
+        title: '哈希与口令存储',
+        content: '哈希不可逆但可被字典和暴力猜测。安全口令存储需要盐、慢哈希和合理参数。',
+        examples: ['识别MD5、SHA1、bcrypt、Argon2等格式差异', '每个用户使用独立随机盐', '密码重置不应发送原密码'],
+        difficulty: 'beginner'
+      },
+      {
+        title: '对称与非对称加密',
+        content: '对称加密依赖共享密钥，非对称加密依赖密钥对。常见错误包括固定IV、错误模式、密钥硬编码和缺少认证。',
+        examples: ['优先使用AEAD模式如GCM或ChaCha20-Poly1305', 'IV/nonce不可重复', '密钥放入KMS或Secret管理'],
+        difficulty: 'intermediate'
+      },
+      {
+        title: '签名、证书与随机数',
+        content: '签名验证身份和完整性，证书绑定公钥和主体。随机数不足会破坏Token、验证码、密钥和签名安全。',
+        examples: ['使用密码学安全随机数生成Token', '证书校验不要关闭hostname验证', '签名验证失败必须拒绝请求'],
+        difficulty: 'advanced'
+      }
+    ],
+    protection: ['区分编码、哈希和加密', '口令使用Argon2/bcrypt/PBKDF2和独立盐', '使用成熟密码库', '密钥不硬编码', '启用认证加密', 'Token使用安全随机数和短时效']
+  }),
+  'binary-reversing': createKnowledgeCategory({
+    title: '逆向与二进制基础',
+    icon: faCodeBranch,
+    description: '逆向与二进制基础面向CTF、漏洞研究和安全审计，强调文件格式、静态分析、动态调试、内存模型和安全编译选项。',
+    sections: [
+      {
+        title: '文件格式与程序入口',
+        content: '理解ELF、PE、Mach-O的入口点、节区、导入表和符号信息，有助于定位程序逻辑和依赖。',
+        examples: ['用file、strings、readelf/objdump观察基础信息', '记录架构、位数、动态/静态链接', '先找输入点和错误信息'],
+        difficulty: 'beginner'
+      },
+      {
+        title: '静态分析',
+        content: '静态分析不运行程序，适合阅读控制流、字符串引用、函数关系和可疑逻辑。',
+        examples: ['从字符串交叉引用回溯逻辑', '把复杂函数拆成输入、处理、输出', '标注危险API和边界检查'],
+        difficulty: 'intermediate'
+      },
+      {
+        title: '动态调试',
+        content: '动态调试通过断点、单步、寄存器和内存观察验证假设。靶场中应记录触发条件而不是只记录结果。',
+        examples: ['在输入读取和比较位置下断点', '观察寄存器、栈和关键缓冲区', '每次修改输入只验证一个假设'],
+        difficulty: 'advanced'
+      },
+      {
+        title: '内存保护与安全编译',
+        content: '现代系统通过ASLR、NX、Canary、PIE、RELRO等机制降低利用稳定性。学习时应先识别保护状态。',
+        examples: ['检查二进制保护选项', '理解越界、格式化字符串和整数问题的根因', '修复时增加边界检查和安全编译参数'],
+        difficulty: 'advanced'
+      }
+    ],
+    protection: ['启用编译器安全选项', '避免危险字符串函数', '输入长度和边界统一校验', '模糊测试关键解析器', '依赖库及时更新', '崩溃样本纳入回归测试']
+  }),
+  forensics: createKnowledgeCategory({
+    title: '取证与流量分析',
+    icon: faArchive,
+    description: '取证与流量分析帮助学习者从文件、日志、PCAP、内存和系统痕迹中还原事件。蓝队学习应强调证据链和时间线。',
+    sections: [
+      {
+        title: '文件元数据分析',
+        content: '文件时间戳、EXIF、文档属性、哈希和魔术字节可帮助判断来源、修改痕迹和类型伪装。',
+        examples: ['计算哈希并记录样本来源', '比较扩展名和真实文件类型', '提取文档元数据但避免打开不可信宏'],
+        difficulty: 'beginner'
+      },
+      {
+        title: 'PCAP流量分析',
+        content: 'PCAP分析关注会话、协议、DNS、HTTP、TLS元数据和异常数据流。训练目标是从网络证据构建事件链。',
+        examples: ['按时间、会话和协议分层查看', '提取域名、IP、User-Agent和文件哈希', '标注可疑连接的前后因果'],
+        difficulty: 'intermediate'
+      },
+      {
+        title: '日志时间线',
+        content: '时间线把分散证据串起来，适合定位初始访问、横向移动、权限变化和数据访问。',
+        examples: ['统一时区和时间格式', '把认证、进程、网络、云审计放在同一时间轴', '区分事实、推断和待验证问题'],
+        difficulty: 'intermediate'
+      },
+      {
+        title: 'IOC提取与报告',
+        content: 'IOC包括IP、域名、URL、哈希、文件路径、注册表、命令行等。报告应说明证据来源、置信度和处置建议。',
+        examples: ['每个IOC标注来源日志和时间', '区分高置信和低置信指标', '报告包含影响范围、根因和建议动作'],
+        difficulty: 'advanced'
+      }
+    ],
+    protection: ['保留原始证据和哈希', '统一时间线和时区', '避免污染样本', 'IOC标注来源和置信度', '报告区分事实与推断', '把检测缺口转化为规则或监控需求']
+  }),
+  'blue-team-dfir': createKnowledgeCategory({
+    title: '蓝队调查与DFIR',
+    icon: faUserSecret,
+    description: '蓝队DFIR按真实SOC工作流组织学习：告警分诊、证据收集、时间线、影响评估、遏制恢复和复盘。',
+    sections: [
+      {
+        title: '告警分诊',
+        content: '分诊要判断告警是否真实、是否紧急、影响哪些资产以及下一步需要哪些证据。',
+        examples: ['记录告警来源、规则名、资产、用户和时间', '先确认资产重要性和暴露面', '避免只凭单条告警下结论'],
+        difficulty: 'beginner'
+      },
+      {
+        title: '证据收集',
+        content: '证据收集应覆盖身份、主机、网络、云审计和应用日志，并保持链路完整。',
+        examples: ['按问题列证据清单', '先采集易失性证据', '为每份证据记录来源和时间范围'],
+        difficulty: 'intermediate'
+      },
+      {
+        title: '遏制与恢复',
+        content: '遏制动作需要权衡业务影响和攻击扩散风险。恢复后要确认根因关闭，避免攻击者再次进入。',
+        examples: ['隔离主机前保存关键证据', '撤销可疑Token和凭据', '恢复后验证补丁、配置和账号状态'],
+        difficulty: 'advanced'
+      },
+      {
+        title: '复盘与改进',
+        content: '复盘把一次事件转化为检测规则、加固项、演练脚本和流程改进。',
+        examples: ['总结漏报点和误报点', '把调查查询固化为检测规则', '形成时间线、根因、影响和行动项'],
+        difficulty: 'intermediate'
+      }
+    ],
+    protection: ['告警分级和SLA', '证据链记录', '身份和终端日志集中化', '事件响应剧本', '恢复后根因验证', '检测规则持续调优']
+  }),
+  'threat-hunting': createKnowledgeCategory({
+    title: '威胁狩猎与检测工程',
+    icon: faSearch,
+    description: '威胁狩猎不是等待告警，而是基于假设主动查询异常行为。检测工程则把可重复发现转化为稳定规则和可运维告警。',
+    sections: [
+      {
+        title: '狩猎假设',
+        content: '一个好的狩猎假设应说明攻击行为、可能证据、数据源和成功/失败判定。',
+        examples: ['假设格式: 如果发生X，应在Y数据源看到Z行为', '先选高价值资产和常见TTP', '限制时间范围减少噪声'],
+        difficulty: 'beginner'
+      },
+      {
+        title: 'KQL/Sigma/YARA基础',
+        content: '查询和规则语言用于表达检测逻辑。学习重点是字段理解、过滤条件、聚合、时间窗口和规则可迁移性。',
+        examples: ['KQL适合日志查询和聚合', 'Sigma适合跨平台日志规则表达', 'YARA适合样本和文件特征匹配'],
+        difficulty: 'intermediate'
+      },
+      {
+        title: 'TTP与ATT&CK映射',
+        content: '映射到ATT&CK能帮助描述攻击阶段、覆盖缺口和检测目标，但不能替代具体数据验证。',
+        examples: ['把检测规则标注技术ID和数据源', '记录覆盖的是行为、工具还是IOC', '优先检测稳定行为而不是短期指标'],
+        difficulty: 'intermediate'
+      },
+      {
+        title: '误报调优',
+        content: '检测规则需要可运行。调优时要保留攻击可见性，同时减少业务正常行为造成的噪声。',
+        examples: ['用白名单解释而不是简单排除全部异常', '记录每次调优理由和样本', '规则上线后观察触发量和处置结果'],
+        difficulty: 'advanced'
+      }
+    ],
+    protection: ['建立数据源覆盖表', '假设驱动狩猎', '规则版本化和评审', 'ATT&CK映射', '误报样本库', '检测效果用触发量、准确率和响应动作衡量']
+  })
 };
 
 
