@@ -371,9 +371,6 @@ wss.on('connection', (ws, req) => {
 
   logger.info(`新的WebSocket连接来自: ${ip}`);
 
-  // 添加调试信息
-  logger.info(`WebSocket握手请求头: ${JSON.stringify(req.headers)}`);
-
   // 创建Shell会话
   const shellSession = shellService.createSession();
 
