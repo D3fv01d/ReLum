@@ -14,7 +14,13 @@ import {
   installDefaultTargets,
   getInstalledImages
 } from '../services/targetService';
-import { targetEnvironments } from '../config/targetEnvironments';
+import {
+  getExerciseNameForImage,
+  getFilteredEnvironmentGroups,
+  getImageName,
+  getTargetEnvironmentStats,
+  isImageInstalled,
+} from '../utils/targetEnvironmentUtils';
 
 const TargetSettings = () => {
   const [loading, setLoading] = useState(false);
@@ -26,66 +32,15 @@ const TargetSettings = () => {
   const [activeTab, setActiveTab] = useState('status');
   const [environmentQuery, setEnvironmentQuery] = useState('');
 
-  // 计算统计信息
-  const stats = useMemo(() => {
-    // 计算环境总数量
-    let totalEnvironments = 0;
-    let totalSize = 0;
-    Object.keys(targetEnvironments).forEach(category => {
-      const sections = targetEnvironments[category].sections;
-      if (sections) {
-        totalEnvironments += Object.keys(sections).length;
+  const stats = useMemo(
+    () => getTargetEnvironmentStats(installedImages),
+    [installedImages]
+  );
 
-        // 估算大小（每个镜像约100MB）
-        totalSize += Object.keys(sections).length * 100;
-      }
-    });
-
-    // 计算已安装的环境
-    const installedCount = installedImages.length;
-    const installedSize = installedCount * 100; // 估算已安装大小
-
-    return {
-      totalEnvironments,
-      totalSize,
-      installedCount,
-      installedSize,
-      installPercent: totalEnvironments ? Math.round((installedCount / totalEnvironments) * 100) : 0
-    };
-  }, [installedImages.length]);
-
-  const availableEnvironmentGroups = useMemo(() => {
-    const query = environmentQuery.trim().toLowerCase();
-
-    return Object.keys(targetEnvironments)
-      .map(category => {
-        const sections = targetEnvironments[category].sections || {};
-        const matchingSections = Object.keys(sections)
-          .filter(sectionName => {
-            if (!query) {
-              return true;
-            }
-
-            const target = sections[sectionName];
-            return [
-              category,
-              sectionName,
-              target.description,
-              target.dockerImage,
-            ].some(value => value?.toLowerCase().includes(query));
-          })
-          .map(sectionName => ({
-            sectionName,
-            target: sections[sectionName],
-          }));
-
-        return {
-          category,
-          sections: matchingSections,
-        };
-      })
-      .filter(group => group.sections.length > 0);
-  }, [environmentQuery]);
+  const availableEnvironmentGroups = useMemo(
+    () => getFilteredEnvironmentGroups(environmentQuery),
+    [environmentQuery]
+  );
 
   const filteredEnvironmentCount = useMemo(
     () => availableEnvironmentGroups.reduce((sum, group) => sum + group.sections.length, 0),
@@ -362,22 +317,8 @@ const TargetSettings = () => {
                   </thead>
                   <tbody className="divide-y divide-gray-600">
                     {installedImages.map((image, index) => {
-                      // 处理image可能是对象或字符串的情况
-                      const imageName = typeof image === 'string'
-                        ? image
-                        : (image.fullName || `${image.repository || '未知'}:${image.tag || 'latest'}`);
-
-                      // 查找对应的题目名称
-                      let exerciseName = "未知题目";
-                      // 遍历所有靶场类别和题目，找到使用该镜像的题目
-                      Object.keys(targetEnvironments).forEach(category => {
-                        const sections = targetEnvironments[category].sections || {};
-                        Object.keys(sections).forEach(sectionName => {
-                          if (sections[sectionName].dockerImage === imageName) {
-                            exerciseName = `${sectionName} (${category})`;
-                          }
-                        });
-                      });
+                      const imageName = getImageName(image);
+                      const exerciseName = getExerciseNameForImage(imageName);
 
                       return (
                         <tr key={index} className={index % 2 === 0 ? 'bg-gray-700' : 'bg-gray-750'}>
@@ -447,15 +388,7 @@ const TargetSettings = () => {
 
                   <div className="space-y-2">
                     {sections.map(({ sectionName, target }) => {
-                      // 检查镜像是否已安装，处理不同格式的镜像名称
-                      const isInstalled = installedImages.some(image => {
-                        if (typeof image === 'string') {
-                          return image === target.dockerImage;
-                        } else {
-                          return image.fullName === target.dockerImage ||
-                                 `${image.repository}:${image.tag}` === target.dockerImage;
-                        }
-                      });
+                      const isInstalled = isImageInstalled(installedImages, target.dockerImage);
 
                       return (
                         <div key={sectionName} className="flex justify-between items-center p-2 bg-gray-800 rounded">

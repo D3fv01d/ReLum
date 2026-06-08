@@ -1,4 +1,8 @@
 import { targetEnvironments } from '../config/targetEnvironments';
+import {
+  isMeaningfulImage,
+  normalizeImage,
+} from '../utils/targetEnvironmentUtils';
 import { requestJson } from './apiClient';
 
 const RUNNING_TARGETS_STORAGE_KEY = 'relum_running_targets';
@@ -122,46 +126,6 @@ const mapStartError = (error, knowledgeId, sectionTitle) => {
     message: `启动失败: ${message}`,
     requestDetails: `知识点: ${knowledgeId}, 章节: ${sectionTitle}`,
   };
-};
-
-const normalizeImage = (image) => {
-  if (typeof image === 'string') {
-    const [repository, tag = 'latest'] = image.split(':');
-    return {
-      fullName: image,
-      repository,
-      tag,
-      id: image,
-      size: '未知',
-      createdSince: '未知',
-    };
-  }
-
-  return {
-    repository: image.repository || image.name || image.Image || '未知',
-    tag: image.tag || image.Tag || 'latest',
-    fullName: image.fullName || image.FullName || `${image.repository || image.name || image.Image || '未知'}:${image.tag || image.Tag || 'latest'}`,
-    id: image.id || image.ID || image.Id || image.fullName || `${image.repository || '未知'}-${Date.now()}`,
-    size: image.size || image.Size || '未知',
-    createdSince: image.createdSince || image.CreatedSince || '未知',
-  };
-};
-
-const isMeaningfulImage = (image) => {
-  if (!image) {
-    return false;
-  }
-
-  if (typeof image === 'string') {
-    return !image.includes('<none>:<none>') && !image.includes('none:none');
-  }
-
-  const repository = image.repository || image.name || image.Image;
-  const tag = image.tag || image.Tag;
-  return !(
-    (repository === '<none>' || repository === 'none') &&
-    (tag === '<none>' || tag === 'none')
-  );
 };
 
 const startTargetEnvironment = async (knowledgeId, sectionTitle) => {
