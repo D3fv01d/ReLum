@@ -3,8 +3,13 @@
 @tailwind utilities;
 
 body {
-  min-height: 1024px;
+  min-height: 100vh;
+  margin: 0;
   background-color: #1A1A1A;
+}
+
+#root {
+  min-height: 100vh;
 }
 
 .nav-link {
@@ -25,4 +30,4 @@ body {
 .nav-link:hover::after,
 .nav-link.active::after {
   width: 100%;
-} 
+}
