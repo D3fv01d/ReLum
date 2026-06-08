@@ -136,6 +136,7 @@ function AIChat({ showAIChat, setShowAIChat, position, onDragStart }) {
           className="text-gray-400 hover:text-white"
           onClick={() => setShowAIChat(false)}
           title="关闭对话"
+          aria-label="关闭 AI 对话"
         >
           <FontAwesomeIcon icon={faTimes} />
         </button>
@@ -201,6 +202,7 @@ function AIChat({ showAIChat, setShowAIChat, position, onDragStart }) {
           type="submit"
           className={`bg-primary px-3 rounded-r-md flex items-center justify-center ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-primary/90'}`}
           disabled={isLoading}
+          aria-label="发送 AI 对话消息"
         >
           <FontAwesomeIcon icon={faPaperPlane} className="text-white" />
         </button>
@@ -216,12 +218,16 @@ export function FloatingTools({ onToggleTerminal, onToggleAIChat }) {
       <button
         className="bg-primary w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-primary/90 transition-all duration-200"
         onClick={onToggleTerminal}
+        aria-label="打开或关闭安全实验终端"
+        title="终端"
       >
         <FontAwesomeIcon icon={faTerminal} className="text-xl" />
       </button>
       <button
         className="bg-primary w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-primary/90 transition-all duration-200"
         onClick={onToggleAIChat}
+        aria-label="打开或关闭 AI 安全助手"
+        title="AI 助手"
       >
         <FontAwesomeIcon icon={faBrain} className="text-xl" />
       </button>
@@ -557,6 +563,7 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
               className="text-gray-400 hover:text-white"
               onClick={toggleFloatingMode}
               title="固定到底部"
+              aria-label="固定终端到底部"
             >
               <FontAwesomeIcon icon={faWindowRestore} />
             </button>
@@ -564,6 +571,7 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
               className="text-gray-400 hover:text-white"
               onClick={() => setShowTerminal(false)}
               title="关闭终端"
+              aria-label="关闭终端"
             >
               <FontAwesomeIcon icon={faTimes} />
             </button>
@@ -662,18 +670,23 @@ export function TerminalPanel({ showTerminal, setShowTerminal }) {
             className="text-gray-400 hover:text-white"
             onClick={toggleFloatingMode}
             title="弹出终端"
+            aria-label="弹出终端"
           >
             <FontAwesomeIcon icon={faExpand} />
           </button>
           <button
             className="text-gray-400 hover:text-white"
             onClick={() => setShowTerminal(prev => !prev)}
+            aria-label={showTerminal ? '收起终端' : '展开终端'}
+            title={showTerminal ? '收起终端' : '展开终端'}
           >
             <FontAwesomeIcon icon={showTerminal ? faChevronDown : faChevronUp} />
           </button>
           <button
             className="text-gray-400 hover:text-white"
             onClick={() => setShowTerminal(false)}
+            aria-label="关闭终端"
+            title="关闭终端"
           >
             <FontAwesomeIcon icon={faTimes} />
           </button>
