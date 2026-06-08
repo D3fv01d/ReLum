@@ -21,6 +21,7 @@ ReLum是一个专业的网络安全学习和实践平台，提供全面的漏洞
 - 学习进度跟踪，帮助用户了解自己的学习情况
 - 实时WebSocket Shell连接，提供真实命令执行环境
 - 完整的网络安全知识库，涵盖14类主要安全漏洞
+- 可配置 AI 助手，支持 DeepSeek、OpenAI、Anthropic、Gemini、OpenAI 兼容接口和 Ollama、LM Studio、vLLM、LocalAI 等本地模型
 
 ## 知识库内容
 
@@ -49,6 +50,12 @@ ReLum是一个专业的网络安全学习和实践平台，提供全面的漏洞
 - 支持常见的Linux/Unix命令
 - 提供沙箱环境进行安全实验
 - 自动重连和错误处理机制
+
+## AI助手配置
+
+AI 助手支持云端 API、OpenAI 兼容网关和本地模型服务。打开 `设置 -> AI 模型配置` 后选择服务商，填写 API 地址、模型名称和密钥即可使用。本地模型如 Ollama、LM Studio、vLLM、LocalAI 通常无需密钥。
+
+详细配置教程、示例和开发者扩展说明见 [AI 供应商与本地模型接入指南](docs/ai-providers.md)。
 
 ## 技术栈
 
@@ -143,6 +150,8 @@ docker-compose up -d
 ```
 relum/
 ├── public/             # 静态资源
+├── docs/               # 使用和开发文档
+│   └── ai-providers.md # AI供应商与本地模型接入指南
 ├── src/                # 前端源代码
 │   ├── components/     # 可复用组件
 │   │   ├── Navbar.js         # 导航栏组件
@@ -150,6 +159,7 @@ relum/
 │   │   └── TerminalPanel.js  # Shell终端组件
 │   ├── config/         # 配置文件
 │   │   ├── ai.js             # AI助手配置
+│   │   ├── aiProviders.js    # AI供应商预设
 │   │   └── targetEnvironments.js # 靶场环境配置
 │   ├── pages/          # 页面组件
 │   │   ├── Dashboard.js      # 仪表盘页面
@@ -158,7 +168,9 @@ relum/
 │   │   ├── Practice.js       # 实践页面
 │   │   └── Settings.js       # 设置页面
 │   ├── services/       # 服务层
-│   │   ├── aiService.js      # AI助手服务
+│   │   ├── aiService.js      # AI请求适配服务
+│   │   ├── aiConfigService.js # AI配置合并服务
+│   │   ├── aiConfigStorage.js # AI配置安全存储
 │   │   └── targetService.js  # 靶场环境服务
 │   ├── App.js          # 主应用组件
 │   ├── index.js        # 应用入口点

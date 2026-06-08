@@ -5,6 +5,7 @@ const DEFAULT_FORM_PARAMETERS = {
 };
 
 export const buildConfigFromForm = (formData) => ({
+  provider: formData.provider,
   apiKey: formData.apiKey.trim(),
   apiUrl: formData.apiUrl.trim(),
   model: formData.model.trim(),
@@ -17,6 +18,7 @@ export const buildConfigFromForm = (formData) => ({
 });
 
 export const buildFormDataFromConfig = (config) => ({
+  provider: config.provider || 'deepseek',
   apiKey: config.apiKey || '',
   apiUrl: config.apiUrl || '',
   model: config.model || '',

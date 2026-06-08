@@ -1,3 +1,5 @@
+import { getAiProviderPreset } from '../config/aiProviders';
+
 const SAVED_CONFIG_KEY = 'deepseekConfig';
 
 const DEFAULT_PARAMETERS = {
@@ -27,9 +29,21 @@ const safeString = (value, fallback, maxLength) => {
 const isSafeApiUrl = (value) => {
   try {
     const url = new URL(value);
+    const hostname = url.hostname.toLowerCase();
+    const isPrivateHostname = (
+      hostname === 'localhost' ||
+      hostname === '0.0.0.0' ||
+      hostname === '[::1]' ||
+      hostname.endsWith('.local') ||
+      /^127\./.test(hostname) ||
+      /^10\./.test(hostname) ||
+      /^192\.168\./.test(hostname) ||
+      /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
+    );
+
     return (
       url.protocol === 'https:' ||
-      (url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))
+      (url.protocol === 'http:' && isPrivateHostname)
     );
   } catch (error) {
     return false;
@@ -37,16 +51,25 @@ const isSafeApiUrl = (value) => {
 };
 
 export const buildSafeAiConfig = (config = {}, fallback = {}) => {
+  const rawProvider = safeString(config.provider, fallback.provider || 'deepseek', 80);
+  const preset = getAiProviderPreset(rawProvider);
+  const provider = preset.id;
   const fallbackParameters = fallback.parameters || DEFAULT_PARAMETERS;
-  const candidateApiUrl = safeString(config.apiUrl, fallback.apiUrl || '', 500);
+  const candidateApiUrl = safeString(
+    config.apiUrl,
+    fallback.apiUrl || preset.defaultApiUrl || '',
+    500
+  );
   const apiUrl = isSafeApiUrl(candidateApiUrl)
     ? candidateApiUrl
-    : fallback.apiUrl || '';
+    : fallback.apiUrl || preset.defaultApiUrl || '';
 
   return {
+    provider,
+    apiFormat: preset.apiFormat,
     apiKey: safeString(config.apiKey, fallback.apiKey || '', 500),
     apiUrl,
-    model: safeString(config.model, fallback.model || 'deepseek-chat', 100),
+    model: safeString(config.model, fallback.model || preset.defaultModel || 'deepseek-chat', 100),
     systemPrompt: safeString(config.systemPrompt, fallback.systemPrompt || '', 4000),
     parameters: {
       temperature: clampNumber(config.parameters?.temperature, fallbackParameters.temperature, 0, 1),

@@ -1,4 +1,5 @@
 import defaultAiConfig from '../config/ai';
+import { getAiProviderPreset } from '../config/aiProviders';
 import {
   buildSafeAiConfig,
   loadSavedAiConfig,
@@ -10,14 +11,26 @@ const mergeAiConfig = (baseConfig, overrideConfig = null) => {
     return baseConfig;
   }
 
-  return buildSafeAiConfig({
+  const providerChanged = overrideConfig.provider && overrideConfig.provider !== baseConfig.provider;
+  const providerPreset = getAiProviderPreset(overrideConfig.provider);
+  const candidateConfig = {
     ...baseConfig,
     ...overrideConfig,
     parameters: {
       ...baseConfig.parameters,
       ...overrideConfig.parameters,
     },
-  }, baseConfig);
+  };
+
+  if (providerChanged && overrideConfig.apiUrl === undefined) {
+    candidateConfig.apiUrl = providerPreset.defaultApiUrl;
+  }
+
+  if (providerChanged && overrideConfig.model === undefined) {
+    candidateConfig.model = providerPreset.defaultModel;
+  }
+
+  return buildSafeAiConfig(candidateConfig, baseConfig);
 };
 
 export const getActiveAiConfig = (configOverride = null) => {
@@ -27,10 +40,11 @@ export const getActiveAiConfig = (configOverride = null) => {
   return mergeAiConfig(baseConfig, configOverride);
 };
 
-export const saveAiConfig = (config) => (
-  persistAiConfig(config, getActiveAiConfig())
-);
+export const saveAiConfig = (config) => {
+  const activeConfig = getActiveAiConfig();
+  return persistAiConfig(mergeAiConfig(activeConfig, config), activeConfig);
+};
 
 export const buildCandidateAiConfig = (config) => (
-  buildSafeAiConfig(config, getActiveAiConfig())
+  mergeAiConfig(getActiveAiConfig(), config)
 );

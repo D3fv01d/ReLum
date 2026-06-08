@@ -9,6 +9,10 @@ import {
   faEye,
   faEyeSlash,
 } from '@fortawesome/free-solid-svg-icons';
+import {
+  AI_PROVIDER_OPTIONS,
+  getAiProviderPreset,
+} from '../../config/aiProviders';
 import aiService from '../../services/aiService';
 import {
   buildCandidateAiConfig,
@@ -26,6 +30,7 @@ function AiSettingsPanel() {
   const [testResult, setTestResult] = useState(null);
   const [saveResult, setSaveResult] = useState(null);
   const [showApiKey, setShowApiKey] = useState(false);
+  const providerPreset = getAiProviderPreset(formData.provider);
 
   // 处理输入变化
   const handleInputChange = (e) => {
@@ -37,6 +42,21 @@ function AiSettingsPanel() {
 
     // 清除之前的测试结果
     setTestResult(null);
+  };
+
+  const handleProviderChange = (event) => {
+    const provider = event.target.value;
+    const nextPreset = getAiProviderPreset(provider);
+
+    setFormData({
+      ...formData,
+      provider,
+      apiUrl: nextPreset.defaultApiUrl || formData.apiUrl,
+      model: nextPreset.defaultModel || formData.model,
+      apiKey: nextPreset.requiresApiKey ? formData.apiKey : '',
+    });
+    setTestResult(null);
+    setSaveResult(null);
   };
 
   // 保存配置
@@ -110,13 +130,35 @@ function AiSettingsPanel() {
 
   return (
         <div className="bg-[#2A2A2A] rounded-lg p-6 shadow-lg">
-          <h2 className="text-xl font-semibold mb-4 text-primary">DeepSeek API 配置</h2>
+          <h2 className="text-xl font-semibold mb-4 text-primary">AI 模型配置</h2>
 
           <form onSubmit={handleSave}>
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-2" htmlFor="provider">
+                服务商 / 运行方式
+              </label>
+              <select
+                id="provider"
+                name="provider"
+                value={formData.provider}
+                onChange={handleProviderChange}
+                className="w-full bg-[#1E1E1E] border border-[#444] rounded-md px-3 py-2 text-white"
+              >
+                {AI_PROVIDER_OPTIONS.map(provider => (
+                  <option key={provider.id} value={provider.id}>
+                    {provider.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-400 mt-1">
+                {providerPreset.description}
+              </p>
+            </div>
+
             {/* API密钥 */}
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2" htmlFor="apiKey">
-                API 密钥 <span className="text-red-500">*</span>
+                API 密钥 {providerPreset.requiresApiKey ? <span className="text-red-500">*</span> : <span className="text-gray-500">（本地服务可留空）</span>}
               </label>
               <div className="flex">
                 <input
@@ -126,8 +168,8 @@ function AiSettingsPanel() {
                   value={formData.apiKey}
                   onChange={handleInputChange}
                   className="w-full bg-[#1E1E1E] border border-[#444] rounded-l-md px-3 py-2 text-white"
-                  placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
-                  required
+                  placeholder={providerPreset.requiresApiKey ? 'sk-xxxxxxxxxxxxxxxxxxxxxxxx' : '本地模型通常无需填写'}
+                  required={providerPreset.requiresApiKey}
                 />
                 <button
                   type="button"
@@ -139,7 +181,7 @@ function AiSettingsPanel() {
                 </button>
               </div>
               <p className="text-xs text-gray-400 mt-1">
-                从 <a href="https://platform.deepseek.com" target="_blank" rel="noreferrer" className="text-primary hover:underline">DeepSeek平台</a> 获取您的API密钥
+                云端模型请填写服务商密钥；Ollama、LM Studio、vLLM、LocalAI 等本地服务通常留空。
               </p>
             </div>
 
@@ -155,7 +197,7 @@ function AiSettingsPanel() {
                 value={formData.apiUrl}
                 onChange={handleInputChange}
                 className="w-full bg-[#1E1E1E] border border-[#444] rounded-md px-3 py-2 text-white"
-                placeholder="https://api.deepseek.com/v1/chat/completions"
+                placeholder={providerPreset.defaultApiUrl || 'https://your-provider.example/v1/chat/completions'}
               />
             </div>
 
@@ -171,7 +213,7 @@ function AiSettingsPanel() {
                 value={formData.model}
                 onChange={handleInputChange}
                 className="w-full bg-[#1E1E1E] border border-[#444] rounded-md px-3 py-2 text-white"
-                placeholder="deepseek-chat"
+                placeholder={providerPreset.defaultModel || 'model-name'}
               />
             </div>
 
@@ -276,9 +318,9 @@ function AiSettingsPanel() {
               <button
                 type="button"
                 onClick={handleTestConnection}
-                disabled={isTesting || !formData.apiKey}
+                disabled={isTesting || (providerPreset.requiresApiKey && !formData.apiKey)}
                 className={`flex items-center px-4 py-2 rounded-md ${
-                  isTesting || !formData.apiKey ? 'bg-blue-800/50 cursor-not-allowed' : 'bg-blue-700 hover:bg-blue-600'
+                  isTesting || (providerPreset.requiresApiKey && !formData.apiKey) ? 'bg-blue-800/50 cursor-not-allowed' : 'bg-blue-700 hover:bg-blue-600'
                 }`}
               >
                 {isTesting ? (
@@ -320,15 +362,15 @@ function AiSettingsPanel() {
             <h2 className="text-xl font-semibold mb-4 text-primary">说明</h2>
             <div className="space-y-3 text-sm">
               <p>
-                此设置页面允许您配置DeepSeek API，以便在ReLum平台中使用真实的AI对话功能。
+                此设置页面支持 DeepSeek、OpenAI、Anthropic、Gemini、任意 OpenAI 兼容 API，以及 Ollama、LM Studio、vLLM、LocalAI 等本地模型服务。
               </p>
               <p>
-                要使用此功能，您需要：
+                本地模型使用示例：
               </p>
               <ol className="list-decimal list-inside space-y-1 ml-4">
-                <li>在 <a href="https://platform.deepseek.com" target="_blank" rel="noreferrer" className="text-primary hover:underline">DeepSeek平台</a> 注册账号</li>
-                <li>创建API密钥</li>
-                <li>将API密钥填入上方表单并保存</li>
+                <li>Ollama：启动 `ollama serve`，地址使用 `http://localhost:11434/api/chat`</li>
+                <li>LM Studio：开启 Local Server，地址通常为 `http://localhost:1234/v1/chat/completions`</li>
+                <li>vLLM / LocalAI：选择 OpenAI 兼容格式并填写对应 `/v1/chat/completions` 地址</li>
               </ol>
               <p>
                 保存后，点击界面右侧的AI助手按钮，即可开始与AI进行真实对话。

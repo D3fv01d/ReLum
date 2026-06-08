@@ -6,6 +6,7 @@ import {
 describe('aiSettingsForm', () => {
   test('converts settings form data into an AI config payload', () => {
     expect(buildConfigFromForm({
+      provider: 'openai-compatible',
       apiKey: ' sk-test ',
       apiUrl: ' https://api.example.com/chat ',
       model: ' deepseek-chat ',
@@ -14,6 +15,7 @@ describe('aiSettingsForm', () => {
       max_tokens: '1200',
       top_p: '0.9',
     })).toEqual({
+      provider: 'openai-compatible',
       apiKey: 'sk-test',
       apiUrl: 'https://api.example.com/chat',
       model: 'deepseek-chat',
@@ -28,6 +30,7 @@ describe('aiSettingsForm', () => {
 
   test('converts saved AI config into form-friendly strings', () => {
     expect(buildFormDataFromConfig({
+      provider: 'ollama',
       apiKey: 'sk-test',
       apiUrl: 'https://api.example.com/chat',
       model: 'deepseek-chat',
@@ -38,6 +41,7 @@ describe('aiSettingsForm', () => {
         top_p: 0.85,
       },
     })).toEqual({
+      provider: 'ollama',
       apiKey: 'sk-test',
       apiUrl: 'https://api.example.com/chat',
       model: 'deepseek-chat',
