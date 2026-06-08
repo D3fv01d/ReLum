@@ -42,7 +42,7 @@ for _ in {1..20}; do
   sleep 0.25
 done
 
-curl -fsS "http://localhost:${SERVER_PORT}/api/health" >/dev/null
+curl -fsSI "http://localhost:${SERVER_PORT}/api/health" | grep -qi '^X-Request-Id:'
 curl -sSI "http://localhost:${SERVER_PORT}/api/target/images" | grep -qi '^X-RateLimit-Limit:'
 
 echo "==> Verification complete"

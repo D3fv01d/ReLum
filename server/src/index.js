@@ -4,6 +4,7 @@ const WebSocket = require('ws');
 const cors = require('cors');
 const helmet = require('helmet');
 const dotenv = require('dotenv');
+const crypto = require('crypto');
 const logger = require('./utils/logger');
 const dockerService = require('./services/dockerService');
 
@@ -47,6 +48,12 @@ const corsOptions = {
     callback(null, false);
   },
 };
+
+const createRequestId = () => (
+  typeof crypto.randomUUID === 'function'
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`
+);
 
 const isValidPort = (port) => (
   port === null ||
@@ -135,6 +142,18 @@ const createRateLimiter = ({ windowMs, maxRequests }) => {
 };
 
 // 安全增强中间件
+app.use((req, res, next) => {
+  req.requestId = req.get('X-Request-Id') || createRequestId();
+  const startedAt = Date.now();
+
+  res.setHeader('X-Request-Id', req.requestId);
+
+  res.on('finish', () => {
+    logger.info(`${req.method} ${req.originalUrl} ${res.statusCode} ${Date.now() - startedAt}ms requestId=${req.requestId}`);
+  });
+
+  next();
+});
 app.use(helmet());
 app.use(cors(corsOptions));
 app.use(express.json({ limit: JSON_BODY_LIMIT }));
@@ -276,6 +295,33 @@ app.post('/api/target/install-defaults', async (req, res) => {
     logger.error(`安装默认靶场环境失败: ${error.message}`);
     res.status(500).json({ error: true, message: error.message });
   }
+});
+
+app.use((req, res) => {
+  res.status(404).json({
+    error: true,
+    message: '接口不存在',
+    requestId: req.requestId,
+  });
+});
+
+app.use((error, req, res, next) => {
+  if (res.headersSent) {
+    next(error);
+    return;
+  }
+
+  const statusCode = error.status || error.statusCode || 500;
+  const message = error.type === 'entity.parse.failed'
+    ? '请求体格式无效'
+    : error.message;
+
+  logger.error(`请求处理失败: ${error.message} requestId=${req.requestId}`);
+  res.status(statusCode).json({
+    error: true,
+    message: statusCode >= 500 ? '服务器内部错误' : message,
+    requestId: req.requestId,
+  });
 });
 
 // 创建HTTP服务器
