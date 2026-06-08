@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import App from './App';
 import deepseekConfig from './config/ai';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // 初始化配置（从本地存储加载）
 const savedConfig = localStorage.getItem('deepseekConfig');
@@ -20,8 +21,10 @@ if (savedConfig) {
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </ErrorBoundary>
   </React.StrictMode>
-); 
+);
