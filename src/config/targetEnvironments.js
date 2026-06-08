@@ -533,4 +533,7 @@ const targetEnvironments = {
   }
 };
 
-export { targetEnvironments, getRandomPort as default }; 
+module.exports = {
+  targetEnvironments,
+  default: getRandomPort,
+};
