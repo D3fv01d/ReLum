@@ -13,6 +13,9 @@ git diff --check
 echo "==> Building frontend"
 npm run build
 
+echo "==> Running frontend tests"
+CI=true npm test -- --watchAll=false --passWithNoTests
+
 echo "==> Auditing frontend production dependencies"
 npm audit --omit=dev
 
