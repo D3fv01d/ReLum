@@ -1,6 +1,5 @@
 const express = require('express');
 const http = require('http');
-const WebSocket = require('ws');
 const cors = require('cors');
 const helmet = require('helmet');
 const dotenv = require('dotenv');
@@ -16,6 +15,7 @@ const {
   isValidRequiredContainerName,
   validateTargetPayload,
 } = require('./utils/targetValidation');
+const createShellWebSocketServer = require('./ws/shellWebSocketServer');
 const dockerService = require('./services/dockerService');
 
 // 加载环境变量
@@ -229,107 +229,13 @@ app.use((error, req, res, next) => {
 // 创建HTTP服务器
 const server = http.createServer(app);
 
-// 创建WebSocket服务器
-const wss = new WebSocket.Server({
+const wss = createShellWebSocketServer({
   server,
-  path: '/api/shell',
   maxPayload: SHELL_WS_MAX_PAYLOAD,
-});
-
-// WebSocket连接处理
-wss.on('connection', (ws, req) => {
-  const ip = req.socket.remoteAddress;
-  const origin = req.headers.origin;
-
-  if (!isOriginAllowed(origin)) {
-    logger.security(`拒绝WebSocket来源: ${origin || 'unknown'}`, 'anonymous', ip);
-    ws.close(1008, 'Origin not allowed');
-    return;
-  }
-
-  logger.info(`新的WebSocket连接来自: ${ip}`);
-
-  // 创建Shell会话
-  const shellSession = shellService.createSession();
-
-  // 发送欢迎消息
-  ws.send(JSON.stringify({
-    type: 'output',
-    content: '已连接到ReLum安全实验Shell服务'
-  }));
-
-  ws.send(JSON.stringify({
-    type: 'output',
-    content: '该环境允许执行任何系统命令，适合进行安全测试和渗透实验'
-  }));
-
-  ws.send(JSON.stringify({
-    type: 'output',
-    content: '输入help查看可用命令示例'
-  }));
-
-  // 处理消息
-  ws.on('message', async (message) => {
-    try {
-      const data = JSON.parse(message);
-
-      if (!data || typeof data !== 'object' || data.type !== 'command' || typeof data.content !== 'string') {
-        ws.send(JSON.stringify({
-          type: 'error',
-          content: '无效的命令消息'
-        }));
-        return;
-      }
-
-      const command = data.content.trim();
-
-      if (!command) {
-        return;
-      }
-
-      if (command.length > SHELL_COMMAND_MAX_LENGTH) {
-        ws.send(JSON.stringify({
-          type: 'error',
-          content: `命令长度不能超过 ${SHELL_COMMAND_MAX_LENGTH} 个字符`
-        }));
-        return;
-      }
-
-      logger.info(`收到Shell命令，长度: ${command.length}`);
-
-      try {
-        // 执行命令并返回结果
-        const result = await shellService.executeCommand(shellSession, command);
-
-        ws.send(JSON.stringify({
-          type: 'output',
-          content: result
-        }));
-      } catch (error) {
-        ws.send(JSON.stringify({
-          type: 'error',
-          content: `执行错误: ${error.message}`
-        }));
-      }
-    } catch (error) {
-      logger.error(`消息处理错误: ${error.message}`);
-      ws.send(JSON.stringify({
-        type: 'error',
-        content: '无效的消息格式'
-      }));
-    }
-  });
-
-  // 处理关闭
-  ws.on('close', () => {
-    logger.info(`WebSocket连接关闭: ${ip}`);
-    shellService.terminateSession(shellSession);
-  });
-
-  // 处理错误
-  ws.on('error', (error) => {
-    logger.error(`WebSocket错误: ${error.message}`);
-  });
+  commandMaxLength: SHELL_COMMAND_MAX_LENGTH,
+  shellService,
+  isOriginAllowed,
+  logger,
 });
 
 // 启动服务器
