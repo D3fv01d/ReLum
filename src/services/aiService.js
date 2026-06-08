@@ -15,19 +15,29 @@ const getSavedConfig = () => {
   }
 };
 
-const getActiveConfig = () => {
+const getActiveConfig = (configOverride = null) => {
   const savedConfig = getSavedConfig();
+  const mergedConfig = savedConfig
+    ? {
+        ...deepseekConfig,
+        ...savedConfig,
+        parameters: {
+          ...deepseekConfig.parameters,
+          ...savedConfig.parameters,
+        },
+      }
+    : deepseekConfig;
 
-  if (!savedConfig) {
-    return deepseekConfig;
+  if (!configOverride) {
+    return mergedConfig;
   }
 
   return {
-    ...deepseekConfig,
-    ...savedConfig,
+    ...mergedConfig,
+    ...configOverride,
     parameters: {
-      ...deepseekConfig.parameters,
-      ...savedConfig.parameters,
+      ...mergedConfig.parameters,
+      ...configOverride.parameters,
     },
   };
 };
@@ -38,8 +48,8 @@ class AIService {
    * @param {Array} messages - 对话历史消息数组
    * @returns {Promise} - 返回API响应的Promise
    */
-  async sendMessage(messages) {
-    const activeConfig = getActiveConfig();
+  async sendMessage(messages, configOverride = null) {
+    const activeConfig = getActiveConfig(configOverride);
 
     // 检查API密钥是否已配置
     if (!activeConfig.apiKey) {
@@ -105,10 +115,10 @@ class AIService {
    * 测试API连接
    * @returns {Promise<boolean>} - 连接是否成功
    */
-  async testConnection() {
+  async testConnection(configOverride = null) {
     try {
       // 发送一个简单的测试消息
-      await this.sendMessage([{ role: 'user', content: '测试连接' }]);
+      await this.sendMessage([{ role: 'user', content: '测试连接' }], configOverride);
       return true;
     } catch (error) {
       console.error('API连接测试失败:', error);

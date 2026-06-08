@@ -1,17 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
-  faSave, 
-  faUndo, 
-  faSpinner, 
-  faCheckCircle, 
+import {
+  faSave,
+  faUndo,
+  faSpinner,
+  faCheckCircle,
   faTimesCircle,
   faRobot,
-  faServer
+  faServer,
+  faEye,
+  faEyeSlash
 } from '@fortawesome/free-solid-svg-icons';
 import deepseekConfig from '../config/ai';
 import aiService from '../services/aiService';
 import TargetSettings from '../components/TargetSettings';
+
+const buildConfigFromForm = (formData) => ({
+  apiKey: formData.apiKey.trim(),
+  apiUrl: formData.apiUrl.trim(),
+  model: formData.model.trim(),
+  systemPrompt: formData.systemPrompt,
+  parameters: {
+    temperature: parseFloat(formData.temperature) || 0.7,
+    max_tokens: parseInt(formData.max_tokens, 10) || 1000,
+    top_p: parseFloat(formData.top_p) || 0.95,
+  },
+});
 
 // 设置页面组件
 function Settings() {
@@ -25,13 +39,14 @@ function Settings() {
     max_tokens: deepseekConfig.parameters?.max_tokens?.toString() || '1000',
     top_p: deepseekConfig.parameters?.top_p?.toString() || '0.95',
   });
-  
+
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [saveResult, setSaveResult] = useState(null);
   const [activeTab, setActiveTab] = useState('ai'); // 默认显示AI设置页
-  
+  const [showApiKey, setShowApiKey] = useState(false);
+
   // 处理输入变化
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -39,36 +54,30 @@ function Settings() {
       ...formData,
       [name]: value,
     });
-    
+
     // 清除之前的测试结果
     setTestResult(null);
   };
-  
+
   // 保存配置
   const handleSave = (e) => {
     e.preventDefault();
     setIsSaving(true);
-    
+
     try {
+      const nextConfig = buildConfigFromForm(formData);
+
       // 更新配置对象
-      deepseekConfig.apiKey = formData.apiKey;
-      deepseekConfig.apiUrl = formData.apiUrl;
-      deepseekConfig.model = formData.model;
-      deepseekConfig.systemPrompt = formData.systemPrompt;
-      deepseekConfig.parameters = {
-        temperature: parseFloat(formData.temperature) || 0.7,
-        max_tokens: parseInt(formData.max_tokens) || 1000,
-        top_p: parseFloat(formData.top_p) || 0.95,
-      };
-      
+      Object.assign(deepseekConfig, nextConfig);
+
       // 保存到本地存储
       localStorage.setItem('deepseekConfig', JSON.stringify(deepseekConfig));
-      
+
       setSaveResult({
         success: true,
         message: '配置已成功保存',
       });
-      
+
       // 3秒后清除保存结果消息
       setTimeout(() => {
         setSaveResult(null);
@@ -83,7 +92,7 @@ function Settings() {
       setIsSaving(false);
     }
   };
-  
+
   // 重置表单
   const handleReset = () => {
     setFormData({
@@ -98,23 +107,16 @@ function Settings() {
     setTestResult(null);
     setSaveResult(null);
   };
-  
+
   // 测试API连接
   const handleTestConnection = async () => {
     setIsTesting(true);
     setTestResult(null);
-    
+
     try {
-      // 临时应用当前表单的配置
-      const originalConfig = { ...deepseekConfig };
-      
-      deepseekConfig.apiKey = formData.apiKey;
-      deepseekConfig.apiUrl = formData.apiUrl;
-      deepseekConfig.model = formData.model;
-      
       // 测试连接
-      const success = await aiService.testConnection();
-      
+      const success = await aiService.testConnection(buildConfigFromForm(formData));
+
       if (success) {
         setTestResult({
           success: true,
@@ -126,9 +128,7 @@ function Settings() {
           message: 'API连接测试失败，请检查配置。',
         });
       }
-      
-      // 恢复原始配置
-      Object.assign(deepseekConfig, originalConfig);
+
     } catch (error) {
       console.error('API测试失败:', error);
       setTestResult({
@@ -139,17 +139,17 @@ function Settings() {
       setIsTesting(false);
     }
   };
-  
+
   // 从本地存储加载配置
   useEffect(() => {
     const savedConfig = localStorage.getItem('deepseekConfig');
     if (savedConfig) {
       try {
         const parsedConfig = JSON.parse(savedConfig);
-        
+
         // 更新内存中的配置对象
         Object.assign(deepseekConfig, parsedConfig);
-        
+
         // 更新表单状态
         setFormData({
           apiKey: parsedConfig.apiKey || '',
@@ -165,21 +165,21 @@ function Settings() {
       }
     }
   }, []);
-  
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-2xl font-bold mb-6">系统设置</h1>
-      
+
       {/* 选项卡导航 */}
       <div className="flex border-b border-gray-700 mb-6">
-        <button 
+        <button
           className={`py-2 px-4 ${activeTab === 'ai' ? 'text-blue-500 border-b-2 border-blue-500 -mb-px' : 'text-gray-400'}`}
           onClick={() => setActiveTab('ai')}
         >
           <FontAwesomeIcon icon={faRobot} className="mr-2" />
           AI助手设置
         </button>
-        <button 
+        <button
           className={`py-2 px-4 ${activeTab === 'target' ? 'text-blue-500 border-b-2 border-blue-500 -mb-px' : 'text-gray-400'}`}
           onClick={() => setActiveTab('target')}
         >
@@ -187,33 +187,43 @@ function Settings() {
           靶场环境设置
         </button>
       </div>
-      
+
       {/* AI设置面板 */}
       {activeTab === 'ai' && (
         <div className="bg-[#2A2A2A] rounded-lg p-6 shadow-lg">
           <h2 className="text-xl font-semibold mb-4 text-primary">DeepSeek API 配置</h2>
-          
+
           <form onSubmit={handleSave}>
             {/* API密钥 */}
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2" htmlFor="apiKey">
                 API 密钥 <span className="text-red-500">*</span>
               </label>
-              <input
-                type="password"
-                id="apiKey"
-                name="apiKey"
-                value={formData.apiKey}
-                onChange={handleInputChange}
-                className="w-full bg-[#1E1E1E] border border-[#444] rounded-md px-3 py-2 text-white"
-                placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
-                required
-              />
+              <div className="flex">
+                <input
+                  type={showApiKey ? 'text' : 'password'}
+                  id="apiKey"
+                  name="apiKey"
+                  value={formData.apiKey}
+                  onChange={handleInputChange}
+                  className="w-full bg-[#1E1E1E] border border-[#444] rounded-l-md px-3 py-2 text-white"
+                  placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
+                  required
+                />
+                <button
+                  type="button"
+                  className="bg-[#1E1E1E] border border-[#444] border-l-0 rounded-r-md px-3 text-gray-300 hover:text-white"
+                  aria-label={showApiKey ? '隐藏 API 密钥' : '显示 API 密钥'}
+                  onClick={() => setShowApiKey(visible => !visible)}
+                >
+                  <FontAwesomeIcon icon={showApiKey ? faEyeSlash : faEye} />
+                </button>
+              </div>
               <p className="text-xs text-gray-400 mt-1">
                 从 <a href="https://platform.deepseek.com" target="_blank" rel="noreferrer" className="text-primary hover:underline">DeepSeek平台</a> 获取您的API密钥
               </p>
             </div>
-            
+
             {/* API URL */}
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2" htmlFor="apiUrl">
@@ -229,7 +239,7 @@ function Settings() {
                 placeholder="https://api.deepseek.com/v1/chat/completions"
               />
             </div>
-            
+
             {/* 模型选择 */}
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2" htmlFor="model">
@@ -245,7 +255,7 @@ function Settings() {
                 placeholder="deepseek-chat"
               />
             </div>
-            
+
             {/* 系统提示词 */}
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2" htmlFor="systemPrompt">
@@ -260,7 +270,7 @@ function Settings() {
                 placeholder="你是一个网络安全专家，可以回答用户关于网络安全的问题..."
               />
             </div>
-            
+
             {/* 参数设置 */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div>
@@ -280,7 +290,7 @@ function Settings() {
                 />
                 <p className="text-xs text-gray-400 mt-1">值越高，回答越随机（0-1）</p>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2" htmlFor="max_tokens">
                   最大Token数
@@ -297,7 +307,7 @@ function Settings() {
                   className="w-full bg-[#1E1E1E] border border-[#444] rounded-md px-3 py-2 text-white"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2" htmlFor="top_p">
                   Top P
@@ -315,33 +325,33 @@ function Settings() {
                 />
               </div>
             </div>
-            
+
             {/* 测试结果 */}
             {testResult && (
               <div className={`mb-4 p-3 rounded-md ${testResult.success ? 'bg-green-700/20' : 'bg-red-700/20'}`}>
                 <div className="flex items-center">
-                  <FontAwesomeIcon 
-                    icon={testResult.success ? faCheckCircle : faTimesCircle} 
-                    className={`mr-2 ${testResult.success ? 'text-green-500' : 'text-red-500'}`} 
+                  <FontAwesomeIcon
+                    icon={testResult.success ? faCheckCircle : faTimesCircle}
+                    className={`mr-2 ${testResult.success ? 'text-green-500' : 'text-red-500'}`}
                   />
                   <span>{testResult.message}</span>
                 </div>
               </div>
             )}
-            
+
             {/* 保存结果 */}
             {saveResult && (
               <div className={`mb-4 p-3 rounded-md ${saveResult.success ? 'bg-green-700/20' : 'bg-red-700/20'}`}>
                 <div className="flex items-center">
-                  <FontAwesomeIcon 
-                    icon={saveResult.success ? faCheckCircle : faTimesCircle} 
-                    className={`mr-2 ${saveResult.success ? 'text-green-500' : 'text-red-500'}`} 
+                  <FontAwesomeIcon
+                    icon={saveResult.success ? faCheckCircle : faTimesCircle}
+                    className={`mr-2 ${saveResult.success ? 'text-green-500' : 'text-red-500'}`}
                   />
                   <span>{saveResult.message}</span>
                 </div>
               </div>
             )}
-            
+
             {/* 操作按钮 */}
             <div className="flex flex-wrap gap-3">
               <button
@@ -358,7 +368,7 @@ function Settings() {
                   <span>测试连接</span>
                 )}
               </button>
-              
+
               <button
                 type="submit"
                 disabled={isSaving}
@@ -375,7 +385,7 @@ function Settings() {
                   </>
                 )}
               </button>
-              
+
               <button
                 type="button"
                 onClick={handleReset}
@@ -386,7 +396,7 @@ function Settings() {
               </button>
             </div>
           </form>
-          
+
           <div className="mt-8">
             <h2 className="text-xl font-semibold mb-4 text-primary">说明</h2>
             <div className="space-y-3 text-sm">
@@ -408,11 +418,11 @@ function Settings() {
           </div>
         </div>
       )}
-      
+
       {/* 靶场环境设置面板 */}
       {activeTab === 'target' && <TargetSettings />}
     </div>
   );
 }
 
-export default Settings; 
+export default Settings;
