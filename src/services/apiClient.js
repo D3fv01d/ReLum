@@ -1,4 +1,5 @@
 const DEFAULT_API_PORT = '8080';
+const DEFAULT_API_TIMEOUT_MS = 15000;
 
 const trimTrailingSlash = (value) => value.replace(/\/+$/, '');
 
@@ -26,8 +27,18 @@ const parseJsonResponse = async (response) => {
   }
 };
 
+const getRequestTimeout = (timeoutMs) => {
+  const configuredTimeout = Number.parseInt(process.env.REACT_APP_API_TIMEOUT_MS, 10);
+  return timeoutMs || configuredTimeout || DEFAULT_API_TIMEOUT_MS;
+};
+
 const requestJson = async (path, options = {}) => {
-  const { body, headers, ...restOptions } = options;
+  const { body, headers, timeoutMs, ...restOptions } = options;
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => {
+    controller.abort();
+  }, getRequestTimeout(timeoutMs));
+
   const requestHeaders = {
     Accept: 'application/json',
     'Cache-Control': 'no-cache',
@@ -37,6 +48,7 @@ const requestJson = async (path, options = {}) => {
   const requestOptions = {
     ...restOptions,
     headers: requestHeaders,
+    signal: controller.signal,
   };
 
   if (body !== undefined) {
@@ -44,14 +56,24 @@ const requestJson = async (path, options = {}) => {
     requestOptions.body = JSON.stringify(body);
   }
 
-  const response = await fetch(`${getApiBaseUrl()}${path}`, requestOptions);
-  const data = await parseJsonResponse(response);
+  try {
+    const response = await fetch(`${getApiBaseUrl()}${path}`, requestOptions);
+    const data = await parseJsonResponse(response);
 
-  if (!response.ok) {
-    throw new Error(data?.message || `HTTP错误 ${response.status}`);
+    if (!response.ok) {
+      throw new Error(data?.message || `HTTP错误 ${response.status}`);
+    }
+
+    return data;
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw new Error('请求超时，请检查后端服务或网络连接');
+    }
+
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
   }
-
-  return data;
 };
 
 export { getApiBaseUrl, requestJson };
