@@ -32,6 +32,22 @@ const getRequestTimeout = (timeoutMs) => {
   return timeoutMs || configuredTimeout || DEFAULT_API_TIMEOUT_MS;
 };
 
+const getResponseMeta = (response) => ({
+  requestId: response.headers.get('X-Request-Id') || null,
+  rateLimit: {
+    limit: response.headers.get('X-RateLimit-Limit') || null,
+    remaining: response.headers.get('X-RateLimit-Remaining') || null,
+    reset: response.headers.get('X-RateLimit-Reset') || null,
+  },
+});
+
+const createApiError = (response, data) => {
+  const error = new Error(data?.message || `HTTP错误 ${response.status}`);
+  error.status = response.status;
+  Object.assign(error, getResponseMeta(response));
+  return error;
+};
+
 const requestJson = async (path, options = {}) => {
   const { body, headers, timeoutMs, ...restOptions } = options;
   const controller = new AbortController();
@@ -61,7 +77,7 @@ const requestJson = async (path, options = {}) => {
     const data = await parseJsonResponse(response);
 
     if (!response.ok) {
-      throw new Error(data?.message || `HTTP错误 ${response.status}`);
+      throw createApiError(response, data);
     }
 
     return data;
