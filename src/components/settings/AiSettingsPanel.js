@@ -129,10 +129,15 @@ function AiSettingsPanel() {
 
 
   return (
-        <div className="bg-[#2A2A2A] rounded-lg p-6 shadow-lg">
-          <h2 className="text-xl font-semibold mb-4 text-primary">AI 模型配置</h2>
+        <div className="settings-panel ai-settings-panel">
+          <div className="settings-panel-heading">
+            <div>
+              <p className="section-kicker">模型连接</p>
+              <h2>AI 服务</h2>
+            </div>
+          </div>
 
-          <form onSubmit={handleSave}>
+          <form onSubmit={handleSave} className="settings-form">
             <div className="mb-4">
               <label className="block text-sm font-medium mb-2" htmlFor="provider">
                 服务商 / 运行方式
@@ -358,25 +363,6 @@ function AiSettingsPanel() {
             </div>
           </form>
 
-          <div className="mt-8">
-            <h2 className="text-xl font-semibold mb-4 text-primary">说明</h2>
-            <div className="space-y-3 text-sm">
-              <p>
-                此设置页面支持 DeepSeek、OpenAI、Anthropic、Gemini、任意 OpenAI 兼容 API，以及 Ollama、LM Studio、vLLM、LocalAI 等本地模型服务。
-              </p>
-              <p>
-                本地模型使用示例：
-              </p>
-              <ol className="list-decimal list-inside space-y-1 ml-4">
-                <li>Ollama：启动 `ollama serve`，地址使用 `http://localhost:11434/api/chat`</li>
-                <li>LM Studio：开启 Local Server，地址通常为 `http://localhost:1234/v1/chat/completions`</li>
-                <li>vLLM / LocalAI：选择 OpenAI 兼容格式并填写对应 `/v1/chat/completions` 地址</li>
-              </ol>
-              <p>
-                保存后，点击界面右侧的AI助手按钮，即可开始与AI进行真实对话。
-              </p>
-            </div>
-          </div>
         </div>
   );
 }

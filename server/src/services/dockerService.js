@@ -1,8 +1,10 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
+const path = require('path');
 const logger = require('../utils/logger');
 const {
+  buildImageArgs,
   buildRunArgs,
   runDockerCommand,
 } = require('./dockerCommand');
@@ -17,6 +19,11 @@ const {
 const {
   ensureStorageDir,
 } = require('./targetStorage');
+
+const PROJECT_ROOT = path.resolve(__dirname, '../../..');
+const DOCKER_BUILD_TIMEOUT = Number.parseInt(process.env.DOCKER_BUILD_TIMEOUT_MS, 10) || 300000;
+const DOCKER_STOP_GRACE_SECONDS = Number.parseInt(process.env.DOCKER_STOP_GRACE_SECONDS, 10) || 3;
+const DOCKER_STOP_COMMAND_TIMEOUT = Number.parseInt(process.env.DOCKER_STOP_COMMAND_TIMEOUT_MS, 10) || 30000;
 
 // 检查Docker是否已安装
 const checkDockerInstalled = async () => {
@@ -111,6 +118,39 @@ const pullImage = (imageName) => {
   });
 };
 
+const resolveProjectPath = (relativePath) => {
+  const resolvedPath = path.resolve(PROJECT_ROOT, relativePath);
+  if (resolvedPath !== PROJECT_ROOT && !resolvedPath.startsWith(`${PROJECT_ROOT}${path.sep}`)) {
+    throw new Error('本地镜像构建路径超出项目目录');
+  }
+  return resolvedPath;
+};
+
+const buildLocalImage = async (target) => {
+  const contextPath = resolveProjectPath(target.localBuildContext);
+  const dockerfilePath = target.localDockerfile
+    ? resolveProjectPath(target.localDockerfile)
+    : undefined;
+  const args = buildImageArgs(target.dockerImage, contextPath, dockerfilePath);
+  logger.info(`开始构建本地靶场镜像: ${target.dockerImage}`);
+  await runDockerCommand(args, { timeout: DOCKER_BUILD_TIMEOUT });
+  logger.info(`本地靶场镜像构建完成: ${target.dockerImage}`);
+};
+
+const ensureTargetImage = async (target) => {
+  if (await checkImageExists(target.dockerImage)) {
+    return '使用已存在的镜像，准备启动容器...';
+  }
+
+  if (target.localBuildContext) {
+    await buildLocalImage(target);
+    return '本地镜像构建完成，准备启动容器...';
+  }
+
+  await pullImage(target.dockerImage);
+  return '镜像下载完成，准备启动容器...';
+};
+
 // 检查容器是否已运行
 const checkContainerRunning = async (containerName) => {
   const { stdout } = await runDockerCommand([
@@ -201,16 +241,56 @@ const startContainer = async (imageName, containerName, port, internalPort = 80,
   }
 };
 
-// 停止容器
-const stopContainer = async (containerName) => {
+const isDockerNotFoundError = (error) => {
+  const message = `${error.message || ''}\n${error.stderr || ''}`;
+  return message.includes('No such object') || message.includes('No such container');
+};
+
+const getContainerStateWithRunner = async (commandRunner, containerName) => {
+  const { stdout } = await commandRunner([
+    'inspect',
+    '--format',
+    '{{json .State}}',
+    containerName,
+  ]);
+
+  return JSON.parse(stdout);
+};
+
+const createStopContainer = (commandRunner = runDockerCommand) => async (containerName) => {
   try {
-    await runDockerCommand(['stop', containerName]);
+    await commandRunner(['stop', '--time', String(DOCKER_STOP_GRACE_SECONDS), containerName], {
+      timeout: DOCKER_STOP_COMMAND_TIMEOUT,
+    });
     logger.info(`容器已停止: ${containerName}`);
   } catch (error) {
+    if (isDockerNotFoundError(error)) {
+      logger.info(`容器不存在，跳过停止: ${containerName}`);
+      return;
+    }
+
+    try {
+      const state = await getContainerStateWithRunner(commandRunner, containerName);
+      if (!state.Running) {
+        logger.warn(`停止命令返回失败，但容器已退出: ${containerName}`);
+        return;
+      }
+    } catch (inspectError) {
+      if (isDockerNotFoundError(inspectError)) {
+        logger.info(`容器已不存在，跳过停止: ${containerName}`);
+        return;
+      }
+
+      logger.warn(`停止失败后检查容器状态也失败: ${inspectError.message}`);
+    }
+
     logger.error(`停止容器失败: ${containerName}, 错误: ${error.message}`);
     throw error;
   }
 };
+
+// 停止容器
+const stopContainer = createStopContainer();
 
 // 获取容器信息
 const getContainerInfo = async (containerName) => {
@@ -239,18 +319,7 @@ const startTargetEnvironment = async (target) => {
     const localIp = await getLocalIpAddress();
 
     // 检查镜像是否存在
-    const imageExists = await checkImageExists(target.dockerImage);
-    let downloadStatus = '';
-
-    // 如果镜像不存在，下载它
-    if (!imageExists) {
-      downloadStatus = '正在下载镜像，请稍候...';
-      logger.info(`开始下载镜像: ${target.dockerImage}`);
-      await pullImage(target.dockerImage);
-      downloadStatus = '镜像下载完成，准备启动容器...';
-    } else {
-      downloadStatus = '使用已存在的镜像，准备启动容器...';
-    }
+    let downloadStatus = await ensureTargetImage(target);
 
     const port = await allocateTargetPort(target.port);
     logger.info(`最终使用端口: ${port}`);
@@ -324,31 +393,32 @@ const installDefaultTargets = async (targetEnvironments) => {
 
     const results = [];
     const errors = [];
+    const targetsByImage = new Map();
 
-    // 遍历所有靶场环境
-    for (const category in targetEnvironments) {
-      const sections = targetEnvironments[category].sections;
-
-      for (const sectionName in sections) {
-        const target = sections[sectionName];
-
-        // 只下载默认安装的镜像
-        if (target.defaultInstall) {
-          try {
-            // 检查镜像是否存在
-            const imageExists = await checkImageExists(target.dockerImage);
-
-            // 如果镜像不存在，下载它
-            if (!imageExists) {
-              await pullImage(target.dockerImage);
-              results.push(`成功安装: ${sectionName} (${target.dockerImage})`);
-            } else {
-              results.push(`已存在: ${sectionName} (${target.dockerImage})`);
-            }
-          } catch (err) {
-            errors.push(`安装失败 ${sectionName}: ${err.message}`);
-          }
+    for (const category of Object.values(targetEnvironments)) {
+      for (const [sectionName, target] of Object.entries(category.sections || {})) {
+        if (!target.defaultInstall) {
+          continue;
         }
+
+        const imageGroup = targetsByImage.get(target.dockerImage) || {
+          target,
+          sections: [],
+        };
+        imageGroup.sections.push(sectionName);
+        targetsByImage.set(target.dockerImage, imageGroup);
+      }
+    }
+
+    for (const [imageName, imageGroup] of targetsByImage) {
+      try {
+        const imageExists = await checkImageExists(imageName);
+        await ensureTargetImage(imageGroup.target);
+        results.push(
+          `${imageExists ? '已存在' : '成功安装'}: ${imageName}，覆盖 ${imageGroup.sections.length} 个章节`
+        );
+      } catch (err) {
+        errors.push(`安装失败 ${imageName}: ${err.message}`);
       }
     }
 
@@ -445,6 +515,8 @@ const removeImage = async (imageId) => {
 module.exports = {
   checkDockerInstalled,
   checkImageExists,
+  buildLocalImage,
+  ensureTargetImage,
   pullImage,
   startContainer,
   stopContainer,
@@ -454,4 +526,5 @@ module.exports = {
   getInstalledImages,
   getRunningContainers,
   removeImage,
+  createStopContainer,
 };

@@ -8,11 +8,14 @@
     "@fortawesome/react-fontawesome": "^0.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.22.0"
+    "react-router-dom": "^7.18.1"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "lab:build": "docker build -f labs/relum-lab/Dockerfile -t relum/local-lab:latest .",
+    "lab:serve": "RELUM_KNOWLEDGE_ID=sql-injection RELUM_SECTION_TITLE=字符型SQL注入 RELUM_FLAG='flag{relum_local_development}' node labs/relum-lab/src/server.js",
+    "lab:test": "node --test labs/relum-lab/src/*.test.js",
     "verify": "bash scripts/verify.sh",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

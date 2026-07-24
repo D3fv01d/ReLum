@@ -1,0 +1,10 @@
+.git
+.gitignore
+.DS_Store
+build
+coverage
+node_modules
+server/logs
+server/node_modules
+*.log
+.flag-secret

@@ -39,6 +39,18 @@ const isValidDockerResourceId = (value) => (
   /^[A-Za-z0-9_./:@-]+$/.test(value)
 );
 
+const isValidProjectRelativePath = (value) => (
+  value === undefined ||
+  (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= 255 &&
+    !value.startsWith('/') &&
+    !value.split(/[\\/]/).includes('..') &&
+    !/[\r\n\0]/.test(value)
+  )
+);
+
 const validateTargetPayload = (target) => {
   if (!target || typeof target !== 'object') {
     return '缺少必要参数';
@@ -64,12 +76,20 @@ const validateTargetPayload = (target) => {
     return 'Docker扩展参数无效';
   }
 
+  if (
+    !isValidProjectRelativePath(target.localBuildContext) ||
+    !isValidProjectRelativePath(target.localDockerfile)
+  ) {
+    return '本地镜像构建路径无效';
+  }
+
   return null;
 };
 
 module.exports = {
   isValidDockerImage,
   isValidDockerResourceId,
+  isValidProjectRelativePath,
   isValidRequiredContainerName,
   validateTargetPayload,
 };

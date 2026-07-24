@@ -19,7 +19,6 @@ const tutorialProfiles = {
       code: "不安全示例:\nSELECT * FROM users WHERE name = '输入值';\n\n安全示例:\nSELECT * FROM users WHERE name = ?;\n参数: [输入值]",
     },
     labTasks: ['判断当前章节属于字符、数值、联合、盲注还是绕过场景', '保存 2 组有效/无效请求作为对照', '写出参数化修复方案并说明最小权限要求'],
-    checklist: ['所有数据库访问使用预编译语句', '错误信息不回显 SQL 细节', '数据库账号不具备高危 DDL/DCL 权限'],
     pitfalls: ['只过滤关键词而不改变拼接 SQL 的根因', '把前端校验当作安全边界', '复测时只看页面是否报错而不看响应差异'],
   },
   xss: {
@@ -36,7 +35,6 @@ const tutorialProfiles = {
       code: "不安全示例:\npreview.innerHTML = userInput;\n\n安全示例:\npreview.textContent = userInput;\n// 富文本场景需要使用可信的 HTML sanitizer 白名单",
     },
     labTasks: ['标注 payload 落入的 HTML 上下文', '说明该场景是否能读取 Cookie 或仅能执行页面内动作', '写出 CSP 与输出编码的组合修复'],
-    checklist: ['默认使用文本输出而不是 HTML 输出', 'Cookie 设置 HttpOnly/SameSite/Secure', 'CSP 不允许 unsafe-inline'],
     pitfalls: ['只过滤 script 标签但忽略事件属性和 SVG', '把 React/Vue 自动转义误用于 dangerouslySetInnerHTML', '忽略 DOM 型 XSS 的客户端触发链'],
   },
   csrf: {
@@ -52,7 +50,6 @@ const tutorialProfiles = {
       code: "POST /account/email\nCookie: sid=...\nX-CSRF-Token: 服务端签发的一次性随机值\n\n服务端校验: token 属于当前会话、未过期、未重复使用",
     },
     labTasks: ['判断接口是否为状态变更', '比较有无 Token 的请求结果', '说明 SameSite=Lax/Strict 对该场景的影响'],
-    checklist: ['状态变更接口不接受纯 GET', 'CSRF Token 与会话绑定', '校验 Origin/Referer 作为辅助信号'],
     pitfalls: ['只在表单页面放 Token 但接口不校验', '把 Referer 当作唯一防线', '忽略 JSON API 也可能被跨站触发'],
   },
   'file-upload': {
@@ -68,7 +65,6 @@ const tutorialProfiles = {
       code: "校验流程:\n1. 只允许业务需要的扩展名白名单\n2. 校验魔术字节和真实内容\n3. 重命名为随机 ID\n4. 存储到不可执行目录\n5. 下载时通过鉴权接口读取",
     },
     labTasks: ['指出当前限制发生在前端还是后端', '记录文件保存路径和访问方式', '给出不可执行存储的部署方案'],
-    checklist: ['上传目录不具备脚本执行权限', '文件名不信任用户输入', '下载/预览接口执行鉴权'],
     pitfalls: ['只检查 Content-Type 请求头', '允许用户控制最终文件路径', '上传后直接暴露原始文件 URL'],
   },
   'file-download': {
@@ -84,7 +80,6 @@ const tutorialProfiles = {
       code: "const root = '/app/files';\nconst resolved = path.resolve(root, userFileName);\nif (!resolved.startsWith(root + path.sep)) {\n  throw new Error('非法文件路径');\n}",
     },
     labTasks: ['记录允许下载的文件范围', '验证越权文件和路径穿越两类风险', '设计文件 ID 到真实路径的映射表'],
-    checklist: ['不把真实路径暴露给前端', '下载前执行对象级鉴权', '拒绝绝对路径和目录跳转'],
     pitfalls: ['只替换 ../ 字符串', '忽略 URL 编码和双重编码', '文件存在即允许下载'],
   },
   'command-execution': {
@@ -100,7 +95,6 @@ const tutorialProfiles = {
       code: "不安全示例:\nexec('ping ' + host);\n\n安全示例:\nexecFile('ping', ['-c', '4', validatedHost]);\n// validatedHost 必须通过 IP/域名白名单校验",
     },
     labTasks: ['指出输入进入解释器的位置', '列出需要拒绝的元字符或改造点', '说明服务进程最小权限配置'],
-    checklist: ['禁用 eval/动态模板执行', '命令参数使用数组传递', '服务账号无高危系统权限'],
     pitfalls: ['只黑名单过滤 ; 但忽略 &&、|、换行', '把 Docker 容器误认为绝对安全边界', '错误日志泄露命令细节'],
   },
   'file-inclusion': {
@@ -116,7 +110,6 @@ const tutorialProfiles = {
       code: "const templates = {\n  home: 'templates/home.html',\n  profile: 'templates/profile.html',\n};\nconst file = templates[userPage] || templates.home;",
     },
     labTasks: ['列出允许包含的页面白名单', '记录一次失败和一次成功的边界测试', '写出禁用伪协议的配置建议'],
-    checklist: ['不直接拼接用户路径', '禁用远程文件包含', '敏感日志和会话文件不可被 Web 进程读取'],
     pitfalls: ['只检查文件后缀', '忽略编码后的 ../', '允许用户选择任意模板文件'],
   },
 };
@@ -135,7 +128,6 @@ const defaultTutorialProfile = {
     code: "目标: {section}\n输入点: URL / 表单 / Header / API Body\n观察: 响应差异、日志、权限变化\n风险: 影响范围和前置条件\n修复: 校验、鉴权、编码、隔离、最小权限\n复测: 使用同一请求确认风险消失",
   },
   labTasks: ['完成一次最小化复现记录', '写出影响范围和前置条件', '给出至少 3 条可执行修复建议'],
-  checklist: ['测试仅限授权靶场', '证据不包含真实敏感数据', '修复后使用原请求复测'],
   pitfalls: ['只记录 payload 不记录上下文', '把漏洞现象等同于根因', '修复后没有做回归验证'],
 };
 
@@ -164,11 +156,6 @@ export const getDetailedTutorial = (categoryId, category, section) => {
       code: formatTutorialText(profile.example.code, values),
     },
     labTasks: profile.labTasks.map(item => formatTutorialText(item, values)),
-    checklist: Array.from(new Set([
-      ...profile.checklist.map(item => formatTutorialText(item, values)),
-      ...(category.protection || []),
-    ])).slice(0, 8),
     pitfalls: profile.pitfalls.map(item => formatTutorialText(item, values)),
   };
 };
-

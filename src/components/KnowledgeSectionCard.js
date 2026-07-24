@@ -3,7 +3,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faBook,
   faCheckCircle,
-  faClock,
   faCode,
   faCopy,
   faExclamationTriangle,
@@ -11,6 +10,7 @@ import {
   faInfoCircle,
   faPlayCircle,
   faPowerOff,
+  faSpinner,
 } from '@fortawesome/free-solid-svg-icons';
 import DetailedTutorial from './DetailedTutorial';
 import SectionDeepDive from './knowledge/SectionDeepDive';
@@ -29,13 +29,6 @@ const difficultyLabel = {
   expert: '专家',
 };
 
-const studyTime = {
-  beginner: '30分钟',
-  intermediate: '1小时',
-  advanced: '2小时',
-  expert: '3小时+',
-};
-
 const getFlagStatusIcon = (status) => {
   if (status?.type === 'success') {
     return faCheckCircle;
@@ -45,12 +38,17 @@ const getFlagStatusIcon = (status) => {
     return faExclamationTriangle;
   }
 
+  if (status?.type === 'loading') {
+    return faSpinner;
+  }
+
   return faInfoCircle;
 };
 
 const KnowledgeSectionCard = ({
   category,
   categoryId,
+  completed,
   copyStatus,
   flagStatus,
   flagValue,
@@ -62,6 +60,7 @@ const KnowledgeSectionCard = ({
   onStopEnvironment,
   section,
   sectionId,
+  targetAvailable,
   targetEnvStatus,
 }) => {
   const status = targetEnvStatus || {};
@@ -73,16 +72,22 @@ const KnowledgeSectionCard = ({
     <section
       id={sectionId}
       aria-labelledby={titleId}
-      className="scroll-mt-24 rounded-lg bg-[#2A2A2A] p-6"
+      className="knowledge-section-card"
     >
-      <div className="flex justify-between items-start mb-4">
-        <h2 id={titleId} className="text-xl font-semibold">{section.title}</h2>
-        <span className={`px-3 py-1 rounded-full text-sm ${difficultyClassName[section.difficulty] || difficultyClassName.expert}`}>
-          {difficultyLabel[section.difficulty] || difficultyLabel.expert}
-        </span>
+      <div className="section-card-heading">
+        <div>
+          <p className="section-kicker">章节 {index + 1}</p>
+          <h2 id={titleId}>{section.title}</h2>
+        </div>
+        <div className="section-card-meta">
+          {completed && <span className="completion-badge"><FontAwesomeIcon icon={faCheckCircle} /> 已通过</span>}
+          <span className={`difficulty-badge ${difficultyClassName[section.difficulty] || difficultyClassName.expert}`}>
+            {difficultyLabel[section.difficulty] || difficultyLabel.expert}
+          </span>
+        </div>
       </div>
 
-      <p className="text-gray-300 mb-6">{section.content}</p>
+      <p className="section-intro">{section.content}</p>
 
       <SectionDeepDive categoryId={categoryId} category={category} section={section} />
 
@@ -91,60 +96,51 @@ const KnowledgeSectionCard = ({
       </div>
 
       {section.examples && section.examples.length > 0 && (
-        <details className="mb-4 rounded-lg border border-[#3A3A3A] bg-[#242424] p-4">
-          <summary className="cursor-pointer text-lg font-medium">
-            <FontAwesomeIcon icon={faCode} className="text-primary mr-2" />
+        <details className="supplemental-code">
+          <summary>
+            <FontAwesomeIcon icon={faCode} />
             补充示例代码
           </summary>
-          <div className="mt-4 rounded-lg bg-[#1E1E1E] p-4">
-            <pre className="text-gray-300 overflow-x-auto">
-              {section.examples.map((example, exampleIndex) => (
-                <div key={exampleIndex} className="mb-2 font-mono">
-                  <span className="text-gray-500 select-none mr-2">{exampleIndex + 1}.</span>
-                  <code className="text-primary">{example}</code>
-                </div>
-              ))}
-            </pre>
+          <div className="supplemental-code-list">
+            {section.examples.map((example, exampleIndex) => (
+              <div key={example}>
+                <span aria-hidden="true">{exampleIndex + 1}.</span>
+                <code>{example}</code>
+              </div>
+            ))}
           </div>
         </details>
       )}
 
       {section.code && (
-        <details className="mb-4 rounded-lg border border-[#3A3A3A] bg-[#242424] p-4">
-          <summary className="cursor-pointer text-lg font-medium">
-            <FontAwesomeIcon icon={faCode} className="text-primary mr-2" />
+        <details className="supplemental-code">
+          <summary>
+            <FontAwesomeIcon icon={faCode} />
             补充示例代码
           </summary>
-          <div className="mt-4 rounded-lg bg-[#1E1E1E] p-4">
-            <pre className="text-gray-300 overflow-x-auto font-mono">
-              <code className="text-primary whitespace-pre-wrap">{section.code}</code>
-            </pre>
-          </div>
+          <pre><code>{section.code}</code></pre>
         </details>
       )}
 
-      <div className="flex justify-between items-center mt-4">
-        <span className="text-gray-500 text-sm flex items-center">
-          <FontAwesomeIcon icon={faClock} className="mr-1" />
-          预计学习时间: {studyTime[section.difficulty] || studyTime.expert}
-        </span>
-
-        <div className="flex space-x-2">
+      <div className="section-actions">
+        <span>{targetAvailable ? '本章节已配置本地靶场' : '本章节暂未配置可运行靶场'}</span>
+        <div>
           <button
             type="button"
-            className="bg-[#333333] hover:bg-[#444444] text-white px-3 py-1 rounded flex items-center text-sm transition-colors duration-200"
+            className="button button-secondary"
             onClick={() => document.getElementById(`tutorial-${index}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
           >
-            <FontAwesomeIcon icon={faBook} className="mr-1" />
-            学习
+            <FontAwesomeIcon icon={faBook} />
+            阅读教程
           </button>
           <button
-            className="bg-primary hover:bg-primary/90 text-white px-3 py-1 rounded flex items-center text-sm transition-colors duration-200"
+            type="button"
+            className="button button-primary"
             onClick={() => onExperiment(section)}
-            disabled={status.loading}
+            disabled={status.loading || !targetAvailable}
           >
-            <FontAwesomeIcon icon={faPlayCircle} className="mr-1" />
-            实验
+            <FontAwesomeIcon icon={faPlayCircle} />
+            {status.url ? '重新打开' : targetAvailable ? '启动靶场' : '暂无靶场'}
             {status.loading && (
               <span className="ml-1 animate-spin">⋯</span>
             )}
@@ -177,15 +173,7 @@ const KnowledgeSectionCard = ({
             <div className="animate-spin mr-2 h-4 w-4 border-2 border-blue-400 border-t-transparent rounded-full"></div>
             <span className="font-medium">{status.status || '正在启动环境...'}</span>
           </div>
-          <div className="mt-2 text-gray-400 text-xs">
-            <p>请稍等，靶场环境正在启动中。这可能需要一点时间：</p>
-            <ul className="ml-4 mt-1 list-disc space-y-1">
-              <li>检查Docker服务</li>
-              <li>下载或准备镜像</li>
-              <li>分配可用网络端口</li>
-              <li>启动容器并配置网络</li>
-            </ul>
-          </div>
+          <p className="mt-2 text-xs text-gray-400">首次启动可能需要下载镜像，请保持 Docker 服务运行。</p>
         </div>
       )}
 
@@ -250,8 +238,9 @@ const KnowledgeSectionCard = ({
               <button
                 className="bg-primary hover:bg-primary/90 text-white rounded-r px-3 py-1 text-sm"
                 onClick={() => onFlagVerify(section)}
+                disabled={flagStatus?.type === 'loading'}
               >
-                验证
+                {flagStatus?.type === 'loading' ? '验证中' : '验证'}
               </button>
             </div>
             {flagStatus && (
@@ -261,7 +250,7 @@ const KnowledgeSectionCard = ({
               }`}>
                 <FontAwesomeIcon
                   icon={getFlagStatusIcon(flagStatus)}
-                  className="mr-1"
+                  className={`mr-1 ${flagStatus.type === 'loading' ? 'animate-spin' : ''}`}
                 />
                 {flagStatus.message}
               </div>

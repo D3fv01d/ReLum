@@ -4,8 +4,8 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: '#4A90E2',
-        secondary: '#2C3E50'
+        primary: '#73D8B4',
+        secondary: '#202522'
       },
       borderRadius: {
         'none': '0px',
@@ -22,4 +22,4 @@ module.exports = {
     }
   },
   plugins: [],
-} 
+}

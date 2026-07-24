@@ -22,15 +22,17 @@ const getTargetForSection = (knowledgeId, sectionTitle) => (
   targetEnvironments[knowledgeId]?.sections?.[sectionTitle] || null
 );
 
-const toTargetPayload = (target) => ({
-  dockerImage: target.dockerImage,
-  port: target.port,
-  internalPort: target.internalPort,
-  description: target.description,
-});
-
 const mapStartError = (error, knowledgeId, sectionTitle) => {
   const message = error.message || '';
+
+  if (message.includes('构建') || message.includes('build')) {
+    return {
+      error: true,
+      message: '启动失败: 本地靶场镜像构建失败',
+      details: message,
+      fix: '请确认 Docker 服务正在运行，并检查本地磁盘空间和镜像构建日志',
+    };
+  }
 
   if (message.includes('拉取镜像失败') || message.includes('pull')) {
     return {
@@ -98,7 +100,8 @@ const startTargetEnvironment = async (knowledgeId, sectionTitle) => {
     const result = await requestJson('/target/start', {
       method: 'POST',
       body: {
-        target: toTargetPayload(target),
+        knowledgeId,
+        sectionTitle,
       },
     });
 
@@ -164,7 +167,6 @@ const getInstalledImages = async () => {
       images,
     };
   } catch (error) {
-    console.warn('获取已安装镜像失败:', error);
     return { error: true, message: `获取失败: ${error.message}`, images: [] };
   }
 };
@@ -173,8 +175,6 @@ const checkDockerInstalled = async () => {
   try {
     return await requestJson('/target/check-docker');
   } catch (error) {
-    console.warn('检查Docker安装状态失败:', error);
-
     if (error.message.includes('JSON')) {
       return {
         installed: false,
@@ -192,6 +192,15 @@ const checkDockerInstalled = async () => {
   }
 };
 
+const getRunningContainers = async () => {
+  try {
+    const result = await requestJson('/target/containers');
+    return Array.isArray(result?.containers) ? result.containers : [];
+  } catch (error) {
+    return [];
+  }
+};
+
 export {
   getTargetEnvironments,
   getTargetsForKnowledge,
@@ -204,4 +213,5 @@ export {
   getRunningTargets,
   isTargetRunning,
   getRunningTargetInfo,
+  getRunningContainers,
 };

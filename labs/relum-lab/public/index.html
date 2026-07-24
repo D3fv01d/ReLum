@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark">
+    <title>ReLum 本地靶场</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="ReLum 本地靶场">
+        <span>R</span>
+        <strong>ReLum Lab</strong>
+      </a>
+      <div class="status" id="runtime-status">环境启动中</div>
+    </header>
+
+    <main class="workspace">
+      <section class="intro" aria-labelledby="challenge-title">
+        <p id="category-title">本地靶场</p>
+        <h1 id="challenge-title">正在载入题目</h1>
+        <div class="engine-tag" id="engine-tag">runtime</div>
+      </section>
+
+      <div class="lab-layout">
+        <section class="task-panel">
+          <div class="section-heading">
+            <span>01</span>
+            <div>
+              <p>任务目标</p>
+              <h2>完成当前场景</h2>
+            </div>
+          </div>
+          <p class="mission" id="mission"></p>
+
+          <details>
+            <summary>查看提示</summary>
+            <p id="hint"></p>
+          </details>
+
+          <div class="artifact-block" id="artifact-block" hidden>
+            <div class="artifact-heading">
+              <strong>题目工件</strong>
+              <a href="/artifact" target="_blank" rel="noreferrer">单独打开</a>
+            </div>
+            <pre id="artifact"></pre>
+          </div>
+        </section>
+
+        <section class="action-panel">
+          <div class="section-heading">
+            <span>02</span>
+            <div>
+              <p>实验操作</p>
+              <h2>提交测试输入</h2>
+            </div>
+          </div>
+
+          <form id="action-form">
+            <label for="challenge-input" id="input-label">输入</label>
+            <textarea id="challenge-input" name="input" rows="9" spellcheck="false" autocomplete="off"></textarea>
+            <button type="submit" id="action-button">执行</button>
+          </form>
+
+          <div class="result" id="result" aria-live="polite" hidden>
+            <div class="result-heading">
+              <strong id="result-title">执行结果</strong>
+              <span id="result-state"></span>
+            </div>
+            <p id="result-message"></p>
+            <pre id="result-output"></pre>
+            <a id="preview-link" target="_blank" rel="noreferrer" hidden>打开受害者页面</a>
+            <iframe id="preview-frame" title="受害者页面预览" sandbox="allow-scripts allow-same-origin" hidden></iframe>
+          </div>
+        </section>
+      </div>
+
+      <section class="flag-panel" id="flag-panel" hidden>
+        <span>CHALLENGE COMPLETE</span>
+        <h2>已取得 Flag</h2>
+        <code id="flag-value"></code>
+      </section>
+    </main>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>

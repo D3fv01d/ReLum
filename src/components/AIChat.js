@@ -93,10 +93,8 @@ function AIChat({ showAIChat, setShowAIChat, position, onDragStart }) {
 
   return (
     <div
-      className="fixed bg-[#1E1E1E] shadow-2xl rounded-lg overflow-hidden flex flex-col z-40 border border-[#444]"
+      className="ai-chat-panel fixed overflow-hidden flex flex-col z-40"
       style={{
-        width: '350px',
-        height: '500px',
         right: `${position.right}px`,
         top: `${position.top}px`,
       }}

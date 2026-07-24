@@ -1,197 +1,255 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
-  faBug,
-  faGraduationCap,
-  faUsers,
-  faShieldAlt,
-  faCode,
-  faTerminal,
-  faLock,
-  faEllipsisH,
-  faUpload,
-  faExchangeAlt,
-  faFileCode
+  faArrowRight,
+  faBookOpen,
+  faCheck,
+  faCircleExclamation,
+  faClockRotateLeft,
+  faGear,
+  faRobot,
+  faServer,
 } from '@fortawesome/free-solid-svg-icons';
-import TerminalFeature from '../components/TerminalFeature';
-import { Link } from 'react-router-dom';
+import knowledgeCategories from '../data/knowledgeCategories';
+import knowledgeData from '../data/knowledgeDetails';
+import { learningPathBlueprints } from '../data/learningPaths';
+import { getAiProviderPreset } from '../config/aiProviders';
+import { getActiveAiConfig } from '../services/aiConfigService';
+import {
+  checkDockerInstalled,
+  getRunningContainers,
+} from '../services/targetService';
+import useLearningProgress from '../hooks/useLearningProgress';
+import { isSectionCompleted } from '../services/learningProgressStore';
+import { listTargetSections } from '../utils/targetEnvironmentUtils';
 
-const featureCards = [
-  {
-    icon: faBug,
-    title: '漏洞实验',
-    description: '提供真实的漏洞环境，让您在实践中学习安全知识。',
-  },
-  {
-    icon: faGraduationCap,
-    title: '专业课程',
-    description: '系统化的学习路径，从基础到高级的安全知识体系。',
-  },
-  {
-    icon: faUsers,
-    title: '智能问答',
-    description: '提供智能 AI，辅助您完成网络安全的学习。',
-  },
-];
+const categoryById = new Map(
+  knowledgeCategories.map((category) => [category.id, category])
+);
 
-const latestLabs = [
-  {
-    to: '/knowledge/file-upload',
-    icon: faUpload,
-    title: '任意文件上传漏洞',
-    meta: '难度：高级 | 时长：3小时',
-    badge: '热门',
-    badgeClass: 'bg-red-500/20 text-red-400',
-  },
-  {
-    to: '/knowledge/logic-vulnerabilities',
-    icon: faExchangeAlt,
-    title: '业务逻辑漏洞利用',
-    meta: '难度：中级 | 时长：2.5小时',
-    badge: '新课',
-    badgeClass: 'bg-primary/20 text-primary',
-  },
-  {
-    to: '/knowledge/xxe',
-    icon: faFileCode,
-    title: 'XML外部实体注入漏洞',
-    meta: '难度：专家 | 时长：4小时',
-    badge: '挑战',
-    badgeClass: 'bg-yellow-500/20 text-yellow-400',
-  },
-];
+const getSectionHref = (categoryId, sectionTitle) => {
+  const sectionIndex = knowledgeData[categoryId]?.sections
+    ?.findIndex((section) => section.title === sectionTitle);
+  const hash = sectionIndex >= 0
+    ? `#knowledge-${categoryId}-section-${sectionIndex + 1}`
+    : '';
 
-const progressItems = [
-  { label: '网络攻击基础', value: 70 },
-  { label: '漏洞利用技术', value: 45 },
-  { label: '中间件安全', value: 30 },
-  { label: '组件与框架安全', value: 25 },
-];
+  return `/knowledge/${categoryId}${hash}`;
+};
 
-const recommendedCourses = [
-  {
-    to: '/knowledge/sql-injection',
-    icon: faShieldAlt,
-    title: '网络安全入门指南',
-    description: '适合初学者的基础安全知识课程',
-    lessons: '12 课时',
-  },
-  {
-    to: '/knowledge/xss',
-    icon: faCode,
-    title: 'Web 漏洞挖掘技术',
-    description: '深入学习常见的 Web 漏洞类型',
-    lessons: '16 课时',
-  },
-  {
-    to: '/knowledge/command-execution',
-    icon: faTerminal,
-    title: '渗透测试实战',
-    description: '手把手教你进行渗透测试',
-    lessons: '20 课时',
-  },
-  {
-    to: '/knowledge/file-download',
-    icon: faLock,
-    title: '安全开发实践',
-    description: '学习如何开发安全的应用程序',
-    lessons: '15 课时',
-  },
-];
+const formatVisitTime = (timestamp) => (
+  new Intl.DateTimeFormat('zh-CN', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(timestamp))
+);
 
 function Dashboard() {
+  const progress = useLearningProgress();
+  const [runtime, setRuntime] = useState({
+    loading: true,
+    dockerInstalled: false,
+    containers: [],
+  });
+
+  useEffect(() => {
+    let active = true;
+
+    Promise.all([checkDockerInstalled(), getRunningContainers()])
+      .then(([dockerStatus, containers]) => {
+        if (active) {
+          setRuntime({
+            loading: false,
+            dockerInstalled: Boolean(dockerStatus?.installed),
+            containers,
+          });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const targetSections = useMemo(() => listTargetSections(), []);
+  const completedTargetCount = useMemo(() => (
+    targetSections.filter(({ category, sectionName }) => (
+      isSectionCompleted(progress, category, sectionName)
+    )).length
+  ), [progress, targetSections]);
+  const totalKnowledgeSections = useMemo(() => (
+    Object.values(knowledgeData).reduce(
+      (total, category) => total + (category.sections?.length || 0),
+      0
+    )
+  ), []);
+  const recentSections = progress.recentSections
+    .map((item) => ({
+      ...item,
+      category: categoryById.get(item.categoryId),
+      href: getSectionHref(item.categoryId, item.sectionTitle),
+    }))
+    .filter((item) => item.category)
+    .slice(0, 4);
+  const aiConfig = getActiveAiConfig();
+  const aiProvider = getAiProviderPreset(aiConfig.provider);
+  const aiReady = aiProvider.local || !aiProvider.requiresApiKey || Boolean(aiConfig.apiKey);
   return (
-    <main className="max-w-7xl mx-auto px-4 py-8 relative">
-      <TerminalFeature />
-
-      <div className="grid grid-cols-1 gap-8 mb-8">
-        <div className="bg-[#222222] rounded-lg p-6">
-          <h1 className="text-3xl font-bold mb-4">欢迎来到 ReLum 网络安全实验场</h1>
-          <p className="text-gray-400 mb-6">这里是一个专业的网络安全学习和实践平台，我们提供全面的漏洞实验环境和学习资源。</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {featureCards.map(feature => (
-              <div key={feature.title} className="bg-[#2A2A2A] rounded-lg p-6">
-                <FontAwesomeIcon icon={feature.icon} className="text-primary text-3xl mb-4" />
-                <h3 className="text-xl font-semibold mb-2">{feature.title}</h3>
-                <p className="text-gray-400">{feature.description}</p>
-              </div>
-            ))}
-          </div>
+    <main className="app-page">
+      <header className="page-heading">
+        <div>
+          <p className="page-eyebrow">本地训练工作台</p>
+          <h1>从知识到靶场，保持一条清晰路径</h1>
+          <p>课程进度由 flag 提交记录，环境状态直接读取本机 Docker 服务。</p>
         </div>
+        <div className="page-heading-actions">
+          <Link to="/knowledge" className="button button-primary">
+            <FontAwesomeIcon icon={faBookOpen} aria-hidden="true" />
+            开始学习
+          </Link>
+          <Link to="/settings" className="button button-secondary" aria-label="打开设置">
+            <FontAwesomeIcon icon={faGear} aria-hidden="true" />
+            环境设置
+          </Link>
+        </div>
+      </header>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="bg-[#222222] rounded-lg p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">最新实验</h2>
-              <Link to="/knowledge" className="text-primary hover:text-primary/90">查看全部</Link>
+      <section className="metric-grid" aria-label="学习与环境概览">
+        <article className="metric-item">
+          <span className="metric-icon"><FontAwesomeIcon icon={faCheck} /></span>
+          <div><strong>{completedTargetCount}</strong><span>已完成题目</span></div>
+          <small>共 {targetSections.length} 个可运行靶场</small>
+        </article>
+        <article className="metric-item">
+          <span className="metric-icon"><FontAwesomeIcon icon={faBookOpen} /></span>
+          <div><strong>{totalKnowledgeSections}</strong><span>知识章节</span></div>
+          <small>{knowledgeCategories.length} 个知识分类</small>
+        </article>
+        <article className="metric-item">
+          <span className="metric-icon"><FontAwesomeIcon icon={faServer} /></span>
+          <div>
+            <strong>{runtime.loading ? '...' : runtime.containers.length}</strong>
+            <span>运行中环境</span>
+          </div>
+          <small>{runtime.loading ? '正在读取 Docker 状态' : runtime.dockerInstalled ? 'Docker 已连接' : 'Docker 未连接'}</small>
+        </article>
+        <article className="metric-item">
+          <span className="metric-icon"><FontAwesomeIcon icon={faRobot} /></span>
+          <div><strong className="metric-text-value">{aiProvider.label}</strong><span>AI 服务</span></div>
+          <small>{aiReady ? `模型 ${aiConfig.model}` : '尚未填写 API 密钥'}</small>
+        </article>
+      </section>
+
+      <div className="dashboard-grid">
+        <section className="content-panel dashboard-primary">
+          <div className="section-heading">
+            <div>
+              <p className="section-kicker">最近记录</p>
+              <h2>继续学习</h2>
             </div>
-            <div className="space-y-4">
-              {latestLabs.map(lab => (
-                <Link key={lab.to} to={lab.to} className="bg-[#2A2A2A] rounded-lg p-4 block hover:bg-[#333333] transition-colors">
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="flex items-start min-w-0">
-                      <FontAwesomeIcon icon={lab.icon} className="text-primary mt-1 mr-3" />
-                      <div className="min-w-0">
-                        <h3 className="font-medium mb-2">{lab.title}</h3>
-                        <p className="text-sm text-gray-400">{lab.meta}</p>
-                      </div>
-                    </div>
-                    <span className={`${lab.badgeClass} px-2 py-1 rounded-full text-sm shrink-0`}>{lab.badge}</span>
-                  </div>
-                </Link>
+            <Link to="/knowledge" className="text-link">查看知识库 <FontAwesomeIcon icon={faArrowRight} /></Link>
+          </div>
+
+          {recentSections.length > 0 ? (
+            <div className="activity-list">
+              {recentSections.map((item) => {
+                const completed = isSectionCompleted(progress, item.categoryId, item.sectionTitle);
+
+                return (
+                  <Link key={`${item.categoryId}-${item.sectionTitle}`} to={item.href} className="activity-row">
+                    <span className="activity-icon">
+                      <FontAwesomeIcon icon={completed ? faCheck : faClockRotateLeft} />
+                    </span>
+                    <span className="activity-copy">
+                      <strong>{item.sectionTitle}</strong>
+                      <small>{item.category.title} · {formatVisitTime(item.visitedAt)}</small>
+                    </span>
+                    <span className={`status-label ${completed ? 'status-success' : ''}`}>
+                      {completed ? '已通过' : '学习中'}
+                    </span>
+                    <FontAwesomeIcon icon={faArrowRight} className="activity-arrow" />
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <FontAwesomeIcon icon={faClockRotateLeft} />
+              <h3>还没有学习记录</h3>
+              <p>打开任意知识章节后，这里会显示你最近访问的内容。</p>
+              <Link to="/knowledge" className="button button-secondary">浏览知识库</Link>
+            </div>
+          )}
+        </section>
+
+        <aside className="content-panel dashboard-side">
+          <div className="section-heading compact">
+            <div>
+              <p className="section-kicker">本机状态</p>
+              <h2>运行环境</h2>
+            </div>
+          </div>
+
+          <div className={`runtime-status ${runtime.dockerInstalled ? 'runtime-online' : ''}`}>
+            <span className="runtime-dot" />
+            <div>
+              <strong>{runtime.loading ? '正在检测' : runtime.dockerInstalled ? 'Docker 可用' : 'Docker 不可用'}</strong>
+              <small>{runtime.loading ? '正在连接本地服务' : runtime.dockerInstalled ? `${runtime.containers.length} 个 ReLum 容器正在运行` : '请在设置中检查本地服务'}</small>
+            </div>
+          </div>
+
+          {runtime.containers.length > 0 && (
+            <ul className="runtime-list">
+              {runtime.containers.slice(0, 3).map((container) => (
+                <li key={container.id || container.name}>
+                  <span>{container.name}</span>
+                  <small>{container.image}</small>
+                </li>
               ))}
-            </div>
-          </div>
+            </ul>
+          )}
 
-          <div className="bg-[#222222] rounded-lg p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">学习进度</h2>
-              <Link to="/knowledge" className="text-primary hover:text-primary/90" aria-label="查看知识库">
-                <FontAwesomeIcon icon={faEllipsisH} />
-              </Link>
-            </div>
-            <div className="space-y-6">
-              {progressItems.map(item => (
-                <div key={item.label}>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-gray-400">{item.label}</span>
-                    <span className="text-sm text-primary">{item.value}%</span>
-                  </div>
-                  <div className="h-2 bg-[#2A2A2A] rounded-full" role="progressbar" aria-label={item.label} aria-valuenow={item.value} aria-valuemin="0" aria-valuemax="100">
-                    <div className="h-2 bg-primary rounded-full" style={{ width: `${item.value}%` }}></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-[#222222] rounded-lg p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold">推荐课程</h2>
-            <Link to="/knowledge" className="text-primary hover:text-primary/90 text-sm">查看知识库</Link>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {recommendedCourses.map(course => (
-              <div key={course.to} className="bg-[#2A2A2A] rounded-lg overflow-hidden">
-                <div className="aspect-video bg-[#333333] flex items-center justify-center">
-                  <FontAwesomeIcon icon={course.icon} className="text-primary text-3xl" />
-                </div>
-                <div className="p-4">
-                  <h3 className="font-medium mb-2">{course.title}</h3>
-                  <p className="text-sm text-gray-400 mb-3">{course.description}</p>
-                  <div className="flex justify-between items-center gap-3">
-                    <span className="text-sm text-primary">{course.lessons}</span>
-                    <Link to={course.to} className="!rounded-button bg-primary hover:bg-primary/90 text-white px-3 py-1 text-sm whitespace-nowrap transition-colors duration-200">
-                      开始学习
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+          <Link to="/settings" className="button button-secondary button-block">
+            管理本地环境
+            <FontAwesomeIcon icon={faArrowRight} />
+          </Link>
+        </aside>
       </div>
+
+      <section className="content-panel path-panel">
+        <div className="section-heading">
+          <div>
+            <p className="section-kicker">推荐顺序</p>
+            <h2>学习路径</h2>
+          </div>
+        </div>
+        <div className="path-list">
+          {learningPathBlueprints.map((path, index) => (
+            <article key={path.title} className="path-row">
+              <span className="path-index">{String(index + 1).padStart(2, '0')}</span>
+              <div>
+                <h3>{path.title}</h3>
+                <p>{path.description}</p>
+              </div>
+              <span className="path-count">{path.categories.length} 个模块</span>
+              <Link to={`/knowledge?path=${path.id}`} aria-label={`打开${path.title}`}>
+                <FontAwesomeIcon icon={faArrowRight} />
+              </Link>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {!runtime.loading && !runtime.dockerInstalled && (
+        <div className="inline-notice" role="status">
+          <FontAwesomeIcon icon={faCircleExclamation} />
+          <span>本机 Docker 服务当前不可用，知识内容仍可阅读，但无法启动靶场。</span>
+          <Link to="/settings">检查设置</Link>
+        </div>
+      )}
     </main>
   );
 }

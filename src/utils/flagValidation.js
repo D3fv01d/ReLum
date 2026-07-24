@@ -1,40 +1,34 @@
-import { targetEnvironments } from '../config/targetEnvironments';
+import { requestJson } from '../services/apiClient';
 
-export const verifySectionFlag = (
+export const verifySectionFlag = async (
   categoryId,
   sectionTitle,
-  submittedFlag,
-  environments = targetEnvironments
+  submittedFlag
 ) => {
-  const correctFlag = environments[categoryId]?.sections?.[sectionTitle]?.flag;
+  const normalizedFlag = String(submittedFlag || '').trim();
 
-  if (!correctFlag) {
+  if (!normalizedFlag) {
     return {
       verified: false,
-      message: '该靶场未设置flag，无需提交',
-      type: 'warning',
-    };
-  }
-
-  if (submittedFlag.trim() === '') {
-    return {
-      verified: false,
-      message: 'flag不能为空',
+      message: 'flag 不能为空',
       type: 'error',
     };
   }
 
-  if (submittedFlag === correctFlag) {
+  try {
+    return await requestJson('/flag/verify', {
+      method: 'POST',
+      body: {
+        knowledgeId: categoryId,
+        sectionTitle,
+        flag: normalizedFlag,
+      },
+    });
+  } catch (error) {
     return {
-      verified: true,
-      message: '恭喜！flag验证成功',
-      type: 'success',
+      verified: false,
+      message: error.status === 422 ? 'flag 不正确，请检查后重试' : error.message,
+      type: 'error',
     };
   }
-
-  return {
-    verified: false,
-    message: 'flag验证失败，请检查后重试',
-    type: 'error',
-  };
 };

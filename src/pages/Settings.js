@@ -5,32 +5,43 @@ import AiSettingsPanel from '../components/settings/AiSettingsPanel';
 import TargetSettings from '../components/TargetSettings';
 
 function Settings() {
-  const [activeTab, setActiveTab] = useState('ai');
+  const [activeTab, setActiveTab] = useState('target');
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">系统设置</h1>
+    <main className="app-page settings-page">
+      <header className="page-heading">
+        <div>
+          <p className="page-eyebrow">本地配置</p>
+          <h1>设置</h1>
+          <p>管理 Docker 靶场与 AI 服务连接。修改会写入本机配置。</p>
+        </div>
+      </header>
 
-      <div className="flex border-b border-gray-700 mb-6">
-        <button
-          className={`py-2 px-4 ${activeTab === 'ai' ? 'text-blue-500 border-b-2 border-blue-500 -mb-px' : 'text-gray-400'}`}
-          onClick={() => setActiveTab('ai')}
-        >
-          <FontAwesomeIcon icon={faRobot} className="mr-2" />
-          AI助手设置
-        </button>
-        <button
-          className={`py-2 px-4 ${activeTab === 'target' ? 'text-blue-500 border-b-2 border-blue-500 -mb-px' : 'text-gray-400'}`}
-          onClick={() => setActiveTab('target')}
-        >
-          <FontAwesomeIcon icon={faServer} className="mr-2" />
-          靶场环境设置
-        </button>
+      <div className="settings-layout">
+        <nav className="settings-nav" aria-label="设置分类">
+          <button
+            type="button"
+            className={activeTab === 'target' ? 'active' : ''}
+            onClick={() => setActiveTab('target')}
+          >
+            <FontAwesomeIcon icon={faServer} />
+            <span><strong>靶场环境</strong><small>Docker 与镜像</small></span>
+          </button>
+          <button
+            type="button"
+            className={activeTab === 'ai' ? 'active' : ''}
+            onClick={() => setActiveTab('ai')}
+          >
+            <FontAwesomeIcon icon={faRobot} />
+            <span><strong>AI 服务</strong><small>云端与本地模型</small></span>
+          </button>
+        </nav>
+
+        <section className="settings-content">
+          {activeTab === 'target' ? <TargetSettings /> : <AiSettingsPanel />}
+        </section>
       </div>
-
-      {activeTab === 'ai' && <AiSettingsPanel />}
-      {activeTab === 'target' && <TargetSettings />}
-    </div>
+    </main>
   );
 }
 

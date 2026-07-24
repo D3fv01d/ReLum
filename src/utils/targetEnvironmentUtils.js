@@ -2,7 +2,6 @@ import { targetEnvironments } from '../config/targetEnvironments';
 
 const UNKNOWN_REPOSITORY = '未知';
 const DEFAULT_TAG = 'latest';
-const ESTIMATED_IMAGE_SIZE_MB = 100;
 
 const parseImageName = (imageName) => {
   const normalizedName = String(imageName || UNKNOWN_REPOSITORY);
@@ -108,10 +107,16 @@ export const listTargetSections = (environments = targetEnvironments) => (
 );
 
 export const getExerciseNameForImage = (imageName, environments = targetEnvironments) => {
-  const match = listTargetSections(environments)
-    .find(({ target }) => target.dockerImage === imageName);
+  const matches = listTargetSections(environments)
+    .filter(({ target }) => target.dockerImage === imageName);
 
-  return match ? `${match.sectionName} (${match.category})` : '未知题目';
+  if (matches.length > 1) {
+    return `ReLum 本地靶场运行时（覆盖 ${matches.length} 个章节）`;
+  }
+
+  return matches.length === 1
+    ? `${matches[0].sectionName} (${matches[0].category})`
+    : '未知题目';
 };
 
 export const getFilteredEnvironmentGroups = (query = '', environments = targetEnvironments) => {
@@ -151,14 +156,15 @@ export const getTargetEnvironmentStats = (
   installedImages = [],
   environments = targetEnvironments
 ) => {
-  const totalEnvironments = listTargetSections(environments).length;
-  const installedCount = installedImages.length;
+  const targetSections = listTargetSections(environments);
+  const totalEnvironments = targetSections.length;
+  const installedCount = targetSections.filter(({ target }) => (
+    isImageInstalled(installedImages, target.dockerImage)
+  )).length;
 
   return {
     totalEnvironments,
-    totalSize: totalEnvironments * ESTIMATED_IMAGE_SIZE_MB,
     installedCount,
-    installedSize: installedCount * ESTIMATED_IMAGE_SIZE_MB,
     installPercent: totalEnvironments
       ? Math.round((installedCount / totalEnvironments) * 100)
       : 0,

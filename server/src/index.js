@@ -17,6 +17,11 @@ const {
 } = require('./utils/targetValidation');
 const createShellWebSocketServer = require('./ws/shellWebSocketServer');
 const dockerService = require('./services/dockerService');
+const {
+  buildChallengeTarget,
+  getChallengeDefinition,
+  verifyChallengeFlag,
+} = require('./services/challengeFlagService');
 
 // 加载环境变量
 dotenv.config();
@@ -52,6 +57,10 @@ app.use(express.json({ limit: JSON_BODY_LIMIT }));
 app.use('/api/target', createRateLimiter({
   windowMs: Number.parseInt(process.env.TARGET_RATE_LIMIT_WINDOW_MS, 10) || 60 * 1000,
   maxRequests: Number.parseInt(process.env.TARGET_RATE_LIMIT_MAX, 10) || 120,
+}));
+app.use('/api/flag', createRateLimiter({
+  windowMs: Number.parseInt(process.env.FLAG_RATE_LIMIT_WINDOW_MS, 10) || 60 * 1000,
+  maxRequests: Number.parseInt(process.env.FLAG_RATE_LIMIT_MAX, 10) || 30,
 }));
 
 // 健康检查路由
@@ -99,7 +108,13 @@ app.get('/api/target/containers', async (req, res) => {
 // 启动靶场环境
 app.post('/api/target/start', async (req, res) => {
   try {
-    const { target } = req.body;
+    const { knowledgeId, sectionTitle } = req.body;
+    const target = buildChallengeTarget(knowledgeId, sectionTitle);
+
+    if (!target) {
+      return res.status(404).json({ error: true, message: '未找到对应的靶场环境' });
+    }
+
     const validationError = validateTargetPayload(target);
 
     if (validationError) {
@@ -112,6 +127,34 @@ app.post('/api/target/start', async (req, res) => {
     logger.error(`启动靶场环境失败: ${error.message}`);
     res.status(500).json({ error: true, message: error.message });
   }
+});
+
+app.post('/api/flag/verify', (req, res) => {
+  const { knowledgeId, sectionTitle, flag } = req.body;
+
+  if (!getChallengeDefinition(knowledgeId, sectionTitle)) {
+    return res.status(404).json({
+      verified: false,
+      type: 'error',
+      message: '未找到对应的靶场题目',
+    });
+  }
+
+  if (typeof flag !== 'string' || flag.trim() === '') {
+    return res.status(400).json({
+      verified: false,
+      type: 'error',
+      message: 'flag 不能为空',
+    });
+  }
+
+  const verified = verifyChallengeFlag(knowledgeId, sectionTitle, flag);
+
+  return res.status(verified ? 200 : 422).json({
+    verified,
+    type: verified ? 'success' : 'error',
+    message: verified ? 'flag 验证成功，章节已完成' : 'flag 不正确，请检查后重试',
+  });
 });
 
 // 停止靶场环境

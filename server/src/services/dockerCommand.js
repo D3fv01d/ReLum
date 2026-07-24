@@ -48,7 +48,19 @@ const buildRunArgs = (platform, imageName, containerName, port, internalPort, op
   return args;
 };
 
+const buildImageArgs = (imageName, contextPath, dockerfilePath) => {
+  const args = ['build'];
+
+  if (dockerfilePath) {
+    args.push('--file', dockerfilePath);
+  }
+
+  args.push('--tag', imageName, contextPath);
+  return args;
+};
+
 module.exports = {
+  buildImageArgs,
   buildRunArgs,
   runDockerCommand,
   splitDockerParams,

@@ -1,30 +1,43 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faArrowLeft,
-  faInfoCircle,
+  faCheck,
   faExclamationTriangle,
 } from '@fortawesome/free-solid-svg-icons';
-import TerminalFeature from '../components/TerminalFeature';
 import KnowledgeSectionCard from '../components/KnowledgeSectionCard';
 import KnowledgeOutlineNav from '../components/knowledge/KnowledgeOutlineNav';
+import ModuleLearningGuide from '../components/knowledge/ModuleLearningGuide';
 import {
   startTargetEnvironment,
   stopTargetEnvironment,
-  getRunningTargetInfo
+  getRunningTargetInfo,
+  getTargetForSection,
 } from '../services/targetService';
 import knowledgeData from '../data/knowledgeDetails';
 import { verifySectionFlag } from '../utils/flagValidation';
+import useLearningProgress from '../hooks/useLearningProgress';
+import {
+  getCategoryPathContexts,
+} from '../data/learningPaths';
+import {
+  isSectionCompleted,
+  recordSectionCompletion,
+  recordSectionVisit,
+} from '../services/learningProgressStore';
 
 function KnowledgeDetail() {
-  const { categoryId } = useParams(); // 路由参数名是categoryId，而不是id
-  const [loading, setLoading] = useState(false);
-  const [category, setCategory] = useState(null);
+  const { categoryId } = useParams();
+  const [searchParams] = useSearchParams();
+  const category = knowledgeData[categoryId] || null;
+  const pathContexts = useMemo(() => getCategoryPathContexts(categoryId), [categoryId]);
+  const requestedPathId = searchParams.get('path');
+  const learningContext = pathContexts.find(({ path }) => path.id === requestedPathId) || pathContexts[0] || null;
+  const progress = useLearningProgress();
   const [activeSectionId, setActiveSectionId] = useState(null);
   const [targetEnvStatuses, setTargetEnvStatuses] = useState({});
   const [copyStatus, setCopyStatus] = useState('');
-  // 添加flag状态
   const [flagValues, setFlagValues] = useState({});
   const [flagStatus, setFlagStatus] = useState({});
   const sectionIds = useMemo(() => {
@@ -36,14 +49,21 @@ function KnowledgeDetail() {
   }, [category, categoryId]);
   const activeSectionIndex = Math.max(0, sectionIds.indexOf(activeSectionId));
   const activeSection = category?.sections?.[activeSectionIndex];
+  const completedSectionTitles = useMemo(() => (
+    new Set((category?.sections || [])
+      .filter((section) => isSectionCompleted(progress, categoryId, section.title))
+      .map((section) => section.title))
+  ), [category, categoryId, progress]);
 
   // 处理复制URL到剪贴板
   const handleCopyUrl = (url) => {
     if (url) {
-      navigator.clipboard.writeText(url).then(() => {
-        setCopyStatus('✓');
-        setTimeout(() => setCopyStatus(''), 2000);
-      });
+      navigator.clipboard.writeText(url)
+        .then(() => {
+          setCopyStatus('已复制');
+          setTimeout(() => setCopyStatus(''), 2000);
+        })
+        .catch(() => setCopyStatus('复制失败'));
     }
   };
 
@@ -85,21 +105,13 @@ function KnowledgeDetail() {
 
   // 处理实验按钮点击
   const handleExperimentClick = async (section) => {
-    // 更新特定章节的状态为加载中
     setTargetEnvStatuses(prev => ({
       ...prev,
       [section.title]: { loading: true, error: null, url: null, status: '正在准备启动靶场环境...' },
     }));
 
     try {
-      // 添加调试信息
-      console.log('实验按钮点击 - 知识点ID:', categoryId);
-      console.log('实验按钮点击 - 章节标题:', section.title);
-
-      // 启动对应的靶场环境
       const result = await startTargetEnvironment(categoryId, section.title);
-
-      console.log('靶场环境启动结果:', result);
 
       if (result.error) {
         setTargetEnvStatuses(prev => ({
@@ -107,7 +119,6 @@ function KnowledgeDetail() {
           [section.title]: { loading: false, error: result.message, url: null },
         }));
       } else {
-        // 成功启动环境
         const envStatus = {
           loading: false,
           error: null,
@@ -124,7 +135,6 @@ function KnowledgeDetail() {
           [section.title]: envStatus,
         }));
 
-        // 可以选择自动在新窗口打开环境
         if (result.url && result.status !== '使用已运行的靶场环境') {
           window.open(result.url, '_blank');
         }
@@ -139,17 +149,14 @@ function KnowledgeDetail() {
     }
   };
 
-  // 检查每个章节是否有运行中的靶场环境
   const checkRunningEnvironments = useCallback(() => {
     if (!category || !category.sections) return;
 
     const updatedStatuses = {};
 
-    // 遍历所有章节，查找运行中的环境
     for (const section of category.sections) {
       const runningInfo = getRunningTargetInfo(categoryId, section.title);
       if (runningInfo) {
-        // 找到运行中的环境，设置状态
         const envStatus = {
           loading: false,
           error: null,
@@ -172,17 +179,6 @@ function KnowledgeDetail() {
   }, [category, categoryId]);
 
   useEffect(() => {
-    setLoading(true);
-
-    // 模拟API请求
-    setTimeout(() => {
-      // 检查知识库中是否有对应categoryId的数据
-      setCategory(knowledgeData[categoryId] || null);
-      setLoading(false);
-    }, 300);
-  }, [categoryId]);
-
-  useEffect(() => {
     if (sectionIds.length === 0) {
       return;
     }
@@ -191,31 +187,48 @@ function KnowledgeDetail() {
     setActiveSectionId(sectionIds.includes(hashId) ? hashId : sectionIds[0]);
   }, [sectionIds]);
 
-  // 页面加载后检查运行中的环境
   useEffect(() => {
-    if (!loading && category) {
+    if (category) {
       checkRunningEnvironments();
     }
-  }, [loading, category, checkRunningEnvironments]);
+  }, [category, checkRunningEnvironments]);
 
-  // 处理flag验证
-  const handleFlagVerify = (section) => {
+  useEffect(() => {
+    if (activeSection) {
+      recordSectionVisit(categoryId, activeSection.title);
+    }
+  }, [activeSection, categoryId]);
+
+  const handleFlagVerify = async (section) => {
     const sectionTitle = section.title;
     const submittedFlag = flagValues[sectionTitle] || '';
-    const result = verifySectionFlag(categoryId, sectionTitle, submittedFlag);
 
-    setFlagStatus({
-      ...flagStatus,
+    setFlagStatus((currentStatus) => ({
+      ...currentStatus,
+      [sectionTitle]: {
+        verified: false,
+        type: 'loading',
+        message: '正在验证 flag...',
+      },
+    }));
+
+    const result = await verifySectionFlag(categoryId, sectionTitle, submittedFlag);
+
+    setFlagStatus((currentStatus) => ({
+      ...currentStatus,
       [sectionTitle]: result,
-    });
+    }));
+
+    if (result.verified) {
+      recordSectionCompletion(categoryId, sectionTitle);
+    }
   };
 
-  // 处理flag输入变化
   const handleFlagChange = (sectionTitle, value) => {
-    setFlagValues({
-      ...flagValues,
+    setFlagValues((currentValues) => ({
+      ...currentValues,
       [sectionTitle]: value
-    });
+    }));
   };
 
   const handleSectionSelect = useCallback((sectionId) => {
@@ -233,84 +246,70 @@ function KnowledgeDetail() {
     });
   }, []);
 
-  // 如果正在加载
-  if (loading) {
-    return (
-      <main className="max-w-7xl mx-auto px-4 py-8 relative lg:pr-28">
-        <div className="bg-[#222222] rounded-lg p-6">
-          <div className="flex items-center justify-center py-10">
-            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  // 如果未找到分类
   if (!category) {
     return (
-      <main className="max-w-7xl mx-auto px-4 py-8 relative lg:pr-28">
-        <div className="bg-[#222222] rounded-lg p-6">
-          <Link to="/knowledge" className="text-primary hover:text-primary/90 mb-6 inline-flex items-center">
-            <FontAwesomeIcon icon={faArrowLeft} className="mr-2" />
-            返回知识库
+      <main className="app-page">
+        <div className="empty-state content-panel">
+          <FontAwesomeIcon icon={faExclamationTriangle} />
+          <h1>未找到该知识分类</h1>
+          <p>当前地址没有对应的知识内容。</p>
+          <Link to="/knowledge" className="button button-secondary">
+            <FontAwesomeIcon icon={faArrowLeft} /> 返回知识库
           </Link>
-          <div className="text-center py-12">
-            <FontAwesomeIcon icon={faExclamationTriangle} className="text-yellow-500 text-5xl mb-4" />
-            <h1 className="text-2xl font-bold mb-2">未找到该知识分类</h1>
-            <p className="text-gray-400">您请求的知识分类不存在或已被移除</p>
-          </div>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="max-w-7xl mx-auto px-4 py-8 relative lg:pr-28">
-      <TerminalFeature />
-      <Link to="/knowledge" className="text-primary hover:text-primary/90 mb-6 inline-flex items-center">
-        <FontAwesomeIcon icon={faArrowLeft} className="mr-2" />
+    <main className="app-page knowledge-detail-page">
+      <Link to={`/knowledge${learningContext ? `?path=${learningContext.path.id}` : ''}`} className="back-link">
+        <FontAwesomeIcon icon={faArrowLeft} />
         返回知识库
       </Link>
 
-      <header className="mb-6">
-        <div className="flex items-center mb-4">
-          <div className="bg-primary/20 p-3 rounded-lg mr-4">
-            <FontAwesomeIcon icon={category.icon} className="text-primary text-2xl" />
+      <header className="knowledge-detail-header">
+        <div className="knowledge-detail-title">
+          <div className="knowledge-icon large">
+            <FontAwesomeIcon icon={category.icon} />
           </div>
-          <h1 className="text-3xl font-bold">{category.title}</h1>
+          <div>
+            <p className="page-eyebrow">
+              {learningContext
+                ? `${learningContext.path.shortTitle} · ${learningContext.stage.title}`
+                : '知识专题'}
+            </p>
+            <h1>{category.title}</h1>
+          </div>
         </div>
-
-        <p className="text-gray-300">{category.description}</p>
+        <p>{category.description}</p>
+        <div className="detail-progress">
+          <FontAwesomeIcon icon={faCheck} />
+          {completedSectionTitles.size} / {category.sections.length} 个章节已通过
+        </div>
       </header>
 
-      <section className="mb-6 rounded-lg bg-[#222222] p-5">
-        <h2 className="text-xl font-semibold mb-4 flex items-center">
-          <FontAwesomeIcon icon={faInfoCircle} className="text-primary mr-2" />
-          防护措施
-        </h2>
-        <ul className="space-y-2 ml-6 list-disc text-gray-300">
-          {category.protection.map((item, index) => (
-            <li key={index}>{item}</li>
-          ))}
-        </ul>
-      </section>
+      <ModuleLearningGuide category={{ ...category, id: categoryId }} context={learningContext} />
 
-      <div className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
-        <KnowledgeOutlineNav
-          activeSectionId={activeSectionId}
-          onSectionSelect={handleSectionSelect}
-          sectionIds={sectionIds}
-          sections={category.sections}
-          targetEnvStatuses={targetEnvStatuses}
-        />
+      <div className="knowledge-study-layout">
+        <aside className="knowledge-sidebar">
+          <KnowledgeOutlineNav
+            activeSectionId={activeSectionId}
+            completedSectionTitles={completedSectionTitles}
+            onSectionSelect={handleSectionSelect}
+            sectionIds={sectionIds}
+            sections={category.sections}
+            targetEnvStatuses={targetEnvStatuses}
+          />
+        </aside>
 
-        <div id="knowledge-study-panel" className="space-y-6 scroll-mt-24">
+        <div id="knowledge-study-panel" className="knowledge-study-panel">
           {activeSection && (
             <KnowledgeSectionCard
               key={activeSection.title}
               category={category}
               categoryId={categoryId}
+              completed={completedSectionTitles.has(activeSection.title)}
               copyStatus={copyStatus}
               flagStatus={flagStatus[activeSection.title]}
               flagValue={flagValues[activeSection.title] || ''}
@@ -322,6 +321,7 @@ function KnowledgeDetail() {
               onStopEnvironment={handleStopEnvironment}
               section={activeSection}
               sectionId={sectionIds[activeSectionIndex]}
+              targetAvailable={Boolean(getTargetForSection(categoryId, activeSection.title))}
               targetEnvStatus={targetEnvStatuses[activeSection.title]}
             />
           )}

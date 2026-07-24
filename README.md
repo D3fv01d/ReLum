@@ -73,10 +73,16 @@ AI 助手支持云端 API、OpenAI 兼容网关和本地模型服务。打开 `�
 
 详细配置教程、示例和开发者扩展说明见 [AI 供应商与本地模型接入指南](docs/ai-providers.md)。
 
+## 学习体系与 Flag
+
+- 课程路径、阶段设计和章节编写要求见 [学习体系与内容规范](docs/learning-architecture.md)。
+- 137 个本地靶场的架构、使用示例和扩展方法见 [本地靶场使用与开发指南](docs/local-labs.md)。
+- 靶场镜像的唯一 flag 注入、验证和迁移要求见 [靶场 Flag 接入规范](docs/challenge-flags.md)。
+
 ## 技术栈
 
 - React 18
-- React Router v6
+- React Router v7
 - Tailwind CSS
 - Font Awesome
 - WebSocket实时通信
@@ -125,7 +131,7 @@ npm start
 npm run verify
 ```
 
-该命令会执行前端生产构建、生产依赖审计、后端语法检查、后端健康检查、请求追踪响应头检查和目标 API 限流响应头检查。
+该命令会执行前端生产构建、前端测试、137 题靶场测试、生产依赖审计、后端测试与语法检查、后端健康检查、请求追踪响应头检查和目标 API 限流响应头检查。
 
 ### 构建 Docker 镜像
 
@@ -168,7 +174,10 @@ relum/
 ├── public/             # 静态资源
 ├── docs/               # 使用和开发文档
 │   ├── ai-providers.md # AI供应商与本地模型接入指南
+│   ├── local-labs.md   # 137 个本地靶场使用与开发指南
 │   └── learning-lab-research.md # 学习型靶场调研与知识库扩展记录
+├── labs/               # 本地隔离靶场运行时
+│   └── relum-lab/      # 统一镜像、场景引擎和靶场界面
 ├── src/                # 前端源代码
 │   ├── components/     # 可复用组件
 │   │   ├── Navbar.js         # 导航栏组件
@@ -212,7 +221,7 @@ relum/
 
 ## 未来计划
 
-- 添加更多交互式漏洞实验环境
+- 为高价值 CVE 增加经过许可审查的可选原版产品复现镜像
 - 实现用户认证和进度保存
 - 添加在线评测系统
 - 集成AI辅助学习功能

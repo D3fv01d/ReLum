@@ -50,7 +50,7 @@ const TargetSettings = () => {
       const result = await checkDockerInstalled();
       setDockerInstalled(result.installed);
       if (!result.installed) {
-        setDockerError(result.error || result.message || '无法连接到Docker服务');
+        setDockerError('无法连接到 Docker 服务，请确认 Docker Desktop 已启动');
       }
     } catch (error) {
       setDockerError(error.message);
@@ -68,7 +68,7 @@ const TargetSettings = () => {
         setInstalledImages(result.images);
       }
     } catch (error) {
-      console.warn('获取已安装镜像失败:', error);
+      setInstalledImages([]);
     }
   }, []);
 
@@ -117,35 +117,41 @@ const TargetSettings = () => {
   }, [checkDocker, fetchInstalledImages]);
 
   return (
-    <div className="bg-gray-800 rounded-lg shadow-lg p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-white">靶场环境管理</h2>
+    <div className="settings-panel target-settings-panel">
+      <div className="settings-panel-heading">
+        <div>
+          <p className="section-kicker">Docker</p>
+          <h2>靶场环境</h2>
+        </div>
         <button
+          type="button"
           onClick={handleRefresh}
-          className="px-3 py-1 bg-gray-700 text-white rounded hover:bg-gray-600 flex items-center"
+          className="button button-secondary button-small"
           disabled={loading}
         >
-          <FontAwesomeIcon icon={faSync} className={`mr-2 ${loading ? 'animate-spin' : ''}`} />
-          刷新状态
+          <FontAwesomeIcon icon={faSync} className={loading ? 'animate-spin' : ''} />
+          刷新
         </button>
       </div>
 
-      {/* 导航选项卡 */}
-      <div className="flex mb-4 border-b border-gray-700">
+      <div className="settings-tabs" role="tablist" aria-label="靶场环境设置">
         <button
-          className={`px-4 py-2 ${activeTab === 'status' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}
+          type="button"
+          className={activeTab === 'status' ? 'active' : ''}
           onClick={() => setActiveTab('status')}
         >
           系统状态
         </button>
         <button
-          className={`px-4 py-2 ${activeTab === 'environments' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}
+          type="button"
+          className={activeTab === 'environments' ? 'active' : ''}
           onClick={() => setActiveTab('environments')}
         >
           靶场环境
         </button>
         <button
-          className={`px-4 py-2 ${activeTab === 'settings' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400'}`}
+          type="button"
+          className={activeTab === 'settings' ? 'active' : ''}
           onClick={() => setActiveTab('settings')}
         >
           管理选项
